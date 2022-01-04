@@ -94,17 +94,15 @@ resource "aws_iam_role_policy_attachment" "lambda_policy" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
-# Change name
 resource "aws_apigatewayv2_api" "entrainment_controller_api" {
-  name          = "serverless_lambda_gw"
+  name          = "entrainment_lambda"
   protocol_type = "HTTP"
 }
-# Change name
 # Look at making gateway more secure with some tokens
 resource "aws_apigatewayv2_stage" "entrainment_controller_api" {
   api_id = aws_apigatewayv2_api.entrainment_controller_api.id
 
-  name        = "serverless_lambda_stage"
+  name        = "entrainment_lambda"
   auto_deploy = true
 
   access_log_settings {
