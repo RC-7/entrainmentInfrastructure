@@ -11,3 +11,9 @@ output "entrainment_controller_function_name" {
 
   value = aws_lambda_function.entrainment_controller.function_name
 }
+
+output "base_url" {
+  description = "Base URL for API Gateway stage."
+
+  value = aws_apigatewayv2_stage.entrainment_controller_api.invoke_url
+}
