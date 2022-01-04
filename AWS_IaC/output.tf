@@ -5,3 +5,9 @@ output "lambda_bucket_name" {
 
   value = aws_s3_bucket.lambda_bucket.id
 }
+
+output "entrainment_controller_function_name" {
+  description = "Name of the Lambda function."
+
+  value = aws_lambda_function.entrainment_controller.function_name
+}
