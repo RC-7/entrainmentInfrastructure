@@ -79,13 +79,19 @@ resource "aws_lambda_function" "entrainment_controller" {
   source_code_hash = data.archive_file.lambda_entrainment_controller.output_base64sha256
 
   role = aws_iam_role.lambda_exec.arn
+
+  environment {
+    variables = {
+      tableName = "${var.table_name}"
+    }
+  }
 }
 
 
 resource "aws_cloudwatch_log_group" "entrainment_controller" {
   name = "/aws/lambda/${aws_lambda_function.entrainment_controller.function_name}"
 
-  retention_in_days = 30
+  retention_in_days = ${var.cloudwatch_retention}
 }
 
 
@@ -142,7 +148,7 @@ resource "aws_apigatewayv2_route" "entrainment_controller_api" {
 resource "aws_cloudwatch_log_group" "api_gw" {
   name = "/aws/api_gw/${aws_apigatewayv2_api.entrainment_controller_api.name}"
 
-  retention_in_days = 30
+  retention_in_days = ${var.cloudwatch_retention}
 }
 
 resource "aws_lambda_permission" "api_gw" {
@@ -152,4 +158,80 @@ resource "aws_lambda_permission" "api_gw" {
   principal     = "apigateway.amazonaws.com"
 
   source_arn = "${aws_apigatewayv2_api.entrainment_controller_api.execution_arn}/*/*"
+}
+
+resource "aws_dynamodb_table" "experimentTable" {
+  name           = var.table_name
+  billing_mode   = var.table_billing_mode
+  hash_key       = var.table_hash_key
+  range_key      = var.table_range_key
+  read_capacity  = var.table_read_capacity
+  write_capacity = var.table_write_capacity
+
+  # Key attributes
+
+  attribute {
+    name = "participantID"
+    type = "S"
+  }
+  attribute {
+    name = "timestamp"
+    type = "S"
+  }
+
+  # Participant identifying attributes
+
+  attribute {
+    name = "uniqueHash"
+    type = "S"
+  }
+  attribute {
+    name = "previousExperience"
+    type = "N" # Number of hours
+  }
+  attribute {
+    name = "gender"
+    type = "S"
+  }
+  attribute {
+    name = "age"
+    type = "S"
+  }
+  attribute {
+    name = "group"
+    type = "S"
+  }
+  attribute {
+    name = "session"
+    type = "S"
+  }
+
+  # Brain state for neurofeedback
+
+  attribute {
+    name = "state"
+    type = "S"
+  }
+
+  # Game score related attributes
+
+  attribute {
+    name = "score"
+    type = "N"
+  }
+  attribute {
+    name = "levelIdentifier"
+    type = "S"
+  }
+
+  # Entrainment controller
+
+  attribute {
+    name = "customEntrinment"
+    type = "S"
+  }
+
+  tags = {
+    environment = "${var.environment}"
+  }
 }

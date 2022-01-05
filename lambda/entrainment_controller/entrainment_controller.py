@@ -1,5 +1,8 @@
 # import boto3
 import json
+import os
+
+TABLE_NAME = os.getenv('tableName')
 
 def respond(body):
     return {
