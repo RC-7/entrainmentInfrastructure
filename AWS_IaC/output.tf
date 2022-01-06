@@ -17,3 +17,9 @@ output "entrainment_controller_base_url" {
 
   value = aws_apigatewayv2_stage.entrainment_controller_api.invoke_url
 }
+
+output "experimentTableArn" {
+  description = "The arn for the table holding experiment data."
+
+  value = aws_dynamodb_table.experimentTable.arn
+}

@@ -21,8 +21,94 @@ provider "aws" {
   region = var.aws_region
 }
 
+#########################################
+############ Dynamo DB table ############
+#########################################
+
+resource "aws_dynamodb_table" "experimentTable" {
+  name           = var.table_name
+  billing_mode   = var.table_billing_mode
+  hash_key       = var.table_hash_key
+  range_key      = var.table_range_key
+  read_capacity  = var.table_read_capacity
+  write_capacity = var.table_write_capacity
+
+  # Key attributes
+
+  attribute {
+    name = "participantID"
+    type = "S"
+  }
+  attribute {
+    name = "timestamp"
+    type = "S"
+  }
+
+  # Participant identifying attributes
+
+#   attribute {
+#     name = "uniqueHash"
+#     type = "S"
+#   }
+#   attribute {
+#     name = "previousExperience"
+#     type = "N" # Number of hours
+#   }
+#   attribute {
+#     name = "gender"
+#     type = "S"
+#   }
+#   attribute {
+#     name = "age"
+#     type = "S"
+#   }
+#   attribute {
+#     name = "group"
+#     type = "S"
+#   }
+#   attribute {
+#     name = "session"
+#     type = "S"
+#   }
+
+#   # Brain state for neurofeedback
+
+#   attribute {
+#     name = "state"
+#     type = "S"
+#   }
+
+#   # Game score related attributes
+
+#   attribute {
+#     name = "score"
+#     type = "N"
+#   }
+#   attribute {
+#     name = "levelIdentifier"
+#     type = "S"
+#   }
+
+#   # Entrainment controller
+
+# TODO Add as GSI
+#   attribute {
+#     name = "customEntrinment"
+#     type = "S"
+#   }
+
+#   tags = {
+#     environment = "${var.environment}"
+#   }
+}
+
+#########################################
+############ entrainmentLambda ############
+#########################################
+
+
 resource "random_pet" "lambda_bucket_name" {
-  prefix = "learn-terraform-functions"
+  prefix = "learn-terraform-functions" #change
   length = 4
 }
 
@@ -50,6 +136,7 @@ resource "aws_s3_bucket_object" "lambda_entrainment_controller" {
   etag = filemd5(data.archive_file.lambda_entrainment_controller.output_path)
 }
 
+# TODO Make name more specific
 resource "aws_iam_role" "lambda_exec" {
   name = "serverless_lambda"
 
@@ -62,6 +149,29 @@ resource "aws_iam_role" "lambda_exec" {
       Principal = {
         Service = "lambda.amazonaws.com"
       }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda_policy_entrainment_controller" {
+  name = "lambda_policy_entrainment_controller"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [{
+      "Effect" : "Allow",
+      "Action" : [
+        "dynamodb:BatchGetItem",
+        "dynamodb:GetItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        # "dynamodb:BatchWriteItem",
+        # "dynamodb:PutItem",
+        # "dynamodb:UpdateItem"
+      ],
+      "Resource" : "${aws_dynamodb_table.experimentTable.arn}"
       }
     ]
   })
@@ -82,7 +192,9 @@ resource "aws_lambda_function" "entrainment_controller" {
 
   environment {
     variables = {
-      tableName = "${var.table_name}"
+      tableName           = "${var.table_name}"
+      participantID       = ""
+      experimentStartTime = ""
     }
   }
 }
@@ -91,7 +203,7 @@ resource "aws_lambda_function" "entrainment_controller" {
 resource "aws_cloudwatch_log_group" "entrainment_controller" {
   name = "/aws/lambda/${aws_lambda_function.entrainment_controller.function_name}"
 
-  retention_in_days = ${var.cloudwatch_retention}
+  retention_in_days = var.cloudwatch_retention
 }
 
 
@@ -104,7 +216,7 @@ resource "aws_apigatewayv2_api" "entrainment_controller_api" {
   name          = "entrainment_lambda"
   protocol_type = "HTTP"
 }
-# Look at making gateway more secure with some tokens
+# TODO Look at making gateway more secure with some tokens
 resource "aws_apigatewayv2_stage" "entrainment_controller_api" {
   api_id = aws_apigatewayv2_api.entrainment_controller_api.id
 
@@ -141,14 +253,14 @@ resource "aws_apigatewayv2_integration" "entrainment_controller_api" {
 resource "aws_apigatewayv2_route" "entrainment_controller_api" {
   api_id = aws_apigatewayv2_api.entrainment_controller_api.id
 
-  route_key = "POST /hello"
+  route_key = "POST /getSettings" # TODO move back to get as don't need to send anything upstream
   target    = "integrations/${aws_apigatewayv2_integration.entrainment_controller_api.id}"
 }
 
 resource "aws_cloudwatch_log_group" "api_gw" {
   name = "/aws/api_gw/${aws_apigatewayv2_api.entrainment_controller_api.name}"
 
-  retention_in_days = ${var.cloudwatch_retention}
+  retention_in_days = var.cloudwatch_retention
 }
 
 resource "aws_lambda_permission" "api_gw" {
@@ -158,80 +270,4 @@ resource "aws_lambda_permission" "api_gw" {
   principal     = "apigateway.amazonaws.com"
 
   source_arn = "${aws_apigatewayv2_api.entrainment_controller_api.execution_arn}/*/*"
-}
-
-resource "aws_dynamodb_table" "experimentTable" {
-  name           = var.table_name
-  billing_mode   = var.table_billing_mode
-  hash_key       = var.table_hash_key
-  range_key      = var.table_range_key
-  read_capacity  = var.table_read_capacity
-  write_capacity = var.table_write_capacity
-
-  # Key attributes
-
-  attribute {
-    name = "participantID"
-    type = "S"
-  }
-  attribute {
-    name = "timestamp"
-    type = "S"
-  }
-
-  # Participant identifying attributes
-
-  attribute {
-    name = "uniqueHash"
-    type = "S"
-  }
-  attribute {
-    name = "previousExperience"
-    type = "N" # Number of hours
-  }
-  attribute {
-    name = "gender"
-    type = "S"
-  }
-  attribute {
-    name = "age"
-    type = "S"
-  }
-  attribute {
-    name = "group"
-    type = "S"
-  }
-  attribute {
-    name = "session"
-    type = "S"
-  }
-
-  # Brain state for neurofeedback
-
-  attribute {
-    name = "state"
-    type = "S"
-  }
-
-  # Game score related attributes
-
-  attribute {
-    name = "score"
-    type = "N"
-  }
-  attribute {
-    name = "levelIdentifier"
-    type = "S"
-  }
-
-  # Entrainment controller
-
-  attribute {
-    name = "customEntrinment"
-    type = "S"
-  }
-
-  tags = {
-    environment = "${var.environment}"
-  }
 }
