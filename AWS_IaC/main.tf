@@ -44,62 +44,8 @@ resource "aws_dynamodb_table" "experimentTable" {
     type = "S"
   }
 
-  # Participant identifying attributes
-
-#   attribute {
-#     name = "uniqueHash"
-#     type = "S"
-#   }
-#   attribute {
-#     name = "previousExperience"
-#     type = "N" # Number of hours
-#   }
-#   attribute {
-#     name = "gender"
-#     type = "S"
-#   }
-#   attribute {
-#     name = "age"
-#     type = "S"
-#   }
-#   attribute {
-#     name = "group"
-#     type = "S"
-#   }
-#   attribute {
-#     name = "session"
-#     type = "S"
-#   }
-
-#   # Brain state for neurofeedback
-
-#   attribute {
-#     name = "state"
-#     type = "S"
-#   }
-
-#   # Game score related attributes
-
-#   attribute {
-#     name = "score"
-#     type = "N"
-#   }
-#   attribute {
-#     name = "levelIdentifier"
-#     type = "S"
-#   }
-
-#   # Entrainment controller
-
 # TODO Add as GSI
-#   attribute {
-#     name = "customEntrinment"
-#     type = "S"
-#   }
 
-#   tags = {
-#     environment = "${var.environment}"
-#   }
 }
 
 #########################################
@@ -136,8 +82,8 @@ resource "aws_s3_bucket_object" "lambda_entrainment_controller" {
   etag = filemd5(data.archive_file.lambda_entrainment_controller.output_path)
 }
 
-# TODO Make name more specific
-resource "aws_iam_role" "lambda_exec" {
+
+resource "aws_iam_role" "lambda_exec_controller" {
   name = "serverless_lambda"
 
   assume_role_policy = jsonencode({
@@ -156,7 +102,7 @@ resource "aws_iam_role" "lambda_exec" {
 
 resource "aws_iam_role_policy" "lambda_policy_entrainment_controller" {
   name = "lambda_policy_entrainment_controller"
-  role = aws_iam_role.lambda_exec.id
+  role = aws_iam_role.lambda_exec_controller.id
 
   policy = jsonencode({
     "Version" : "2012-10-17",
@@ -167,9 +113,6 @@ resource "aws_iam_role_policy" "lambda_policy_entrainment_controller" {
         "dynamodb:GetItem",
         "dynamodb:Query",
         "dynamodb:Scan",
-        # "dynamodb:BatchWriteItem",
-        # "dynamodb:PutItem",
-        # "dynamodb:UpdateItem"
       ],
       "Resource" : "${aws_dynamodb_table.experimentTable.arn}"
       }
@@ -188,7 +131,7 @@ resource "aws_lambda_function" "entrainment_controller" {
 
   source_code_hash = data.archive_file.lambda_entrainment_controller.output_base64sha256
 
-  role = aws_iam_role.lambda_exec.arn
+  role = aws_iam_role.lambda_exec_controller.arn
 
   environment {
     variables = {
@@ -209,7 +152,7 @@ resource "aws_cloudwatch_log_group" "entrainment_controller" {
 
 
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
-  role       = aws_iam_role.lambda_exec.name
+  role       = aws_iam_role.lambda_exec_controller.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 resource "aws_apigatewayv2_api" "entrainment_controller_api" {
@@ -253,7 +196,7 @@ resource "aws_apigatewayv2_integration" "entrainment_controller_api" {
 resource "aws_apigatewayv2_route" "entrainment_controller_api" {
   api_id = aws_apigatewayv2_api.entrainment_controller_api.id
 
-  route_key = "POST /getSettings" # TODO move back to get as don't need to send anything upstream
+  route_key = "POST /getSettings"
   target    = "integrations/${aws_apigatewayv2_integration.entrainment_controller_api.id}"
 }
 
