@@ -21,6 +21,6 @@ resource "aws_dynamodb_table" "experimentTable" {
     type = "S"
   }
 
-# TODO Add as GSI
+  # TODO Add as GSI
 
 }

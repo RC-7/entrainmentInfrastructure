@@ -56,3 +56,27 @@ variable "environment" {
   description = "Name of environment"
   default     = "experiment"
 }
+
+#############################################
+################# Set score #################
+#############################################
+
+variable "set_score_queue" {
+  description = "Queue name for set score workflow"
+  default     = "Set-Score"
+}
+
+variable "sqs_retention" {
+  description = "SQS queue retention seconds"
+  default     = 300
+}
+
+variable "dlq_retention" {
+  description = "SQS DLQ retention seconds"
+  default     = 172800 # 2 days
+}
+
+variable "sqs_max_recieve" {
+  description = "SQS Max recieve count"
+  default     = 4
+}

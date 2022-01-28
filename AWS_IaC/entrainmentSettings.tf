@@ -1,14 +1,10 @@
 # Contains all IOC code to setup the lambda and API to poll entrainment settings
 
-
 #########################################
 ############ entrainmentLambda ##########
 #########################################
 
-
-
 resource "random_pet" "lambda_bucket_name" {
-  prefix = "learn-terraform-functions" #change
   length = 4
 }
 
