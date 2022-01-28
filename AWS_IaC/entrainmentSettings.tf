@@ -1,56 +1,10 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 3.48.0"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.1.0"
-    }
-    archive = {
-      source  = "hashicorp/archive"
-      version = "~> 2.2.0"
-    }
-  }
+# Contains all IOC code to setup the lambda and API to poll entrainment settings
 
-  required_version = "~> 1.0"
-}
-
-provider "aws" {
-  region = var.aws_region
-}
 
 #########################################
-############ Dynamo DB table ############
+############ entrainmentLambda ##########
 #########################################
 
-resource "aws_dynamodb_table" "experimentTable" {
-  name           = var.table_name
-  billing_mode   = var.table_billing_mode
-  hash_key       = var.table_hash_key
-  range_key      = var.table_range_key
-  read_capacity  = var.table_read_capacity
-  write_capacity = var.table_write_capacity
-
-  # Key attributes
-
-  attribute {
-    name = "participantID"
-    type = "S"
-  }
-  attribute {
-    name = "timestamp"
-    type = "S"
-  }
-
-# TODO Add as GSI
-
-}
-
-#########################################
-############ entrainmentLambda ############
-#########################################
 
 
 resource "random_pet" "lambda_bucket_name" {
@@ -142,6 +96,9 @@ resource "aws_lambda_function" "entrainment_controller" {
   }
 }
 
+#########################################
+################## Logs #################
+#########################################
 
 resource "aws_cloudwatch_log_group" "entrainment_controller" {
   name = "/aws/lambda/${aws_lambda_function.entrainment_controller.function_name}"
@@ -155,6 +112,10 @@ resource "aws_iam_role_policy_attachment" "lambda_policy" {
   role       = aws_iam_role.lambda_exec_controller.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
+
+#########################################
+################## API ##################
+#########################################
 resource "aws_apigatewayv2_api" "entrainment_controller_api" {
   name          = "entrainment_lambda"
   protocol_type = "HTTP"
