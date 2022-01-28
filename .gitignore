@@ -30,4 +30,4 @@ override.tf.json
 
 .vscode/*
 
-aws_resources.txt
+aws_resources.json

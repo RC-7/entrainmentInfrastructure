@@ -7,8 +7,9 @@ function_name () {
     echo , >> $2;
 }
 
-echo { > aws_resources.txt;
+echo { > aws_resources.json;
 
-terraform output| while read -r line; do function_name "$line" "aws_resources.txt"; done;
+terraform output| while read -r line; do function_name "$line" "aws_resources.json"; done;
+sed -i '$ s/.$//' aws_resources.json
 
-echo } >> aws_resources.txt;
+echo } >> aws_resources.json;
