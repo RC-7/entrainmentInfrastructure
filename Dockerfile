@@ -35,6 +35,5 @@ RUN sudo apt-get update && sudo apt-get install terraform
 
 # Only setting up experiment
 FROM hashicorp/terraform:latest as experiment_setup_only
-WORKDIR /AWS_IaC
 # TODO Add test runner dependancies
 

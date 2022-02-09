@@ -3,9 +3,9 @@ import os
 
 # TODO add help docs
 
-run_commands = {
-    "experiment_setup_only": "docker build --target experiment_setup_only -t experiment_setup .",
-    "experiment_complete": "docker build --target experiment_complete --build-arg tensorflow_version=latest -t experiment_runner ."
+build_commands = {
+    "experiment_setup_only": "docker build --target experiment_setup_only -t experiment_setup ..",
+    "experiment_complete": "docker build --target experiment_complete --build-arg tensorflow_version=latest -t experiment_runner .."
 }
 
 delete_commands = {
@@ -31,15 +31,27 @@ my_parser.add_argument('--target', action='store', choices= docker_targets, requ
 args = my_parser.parse_args()
 
 if args.framework == 'docker':
-    if args.action.lower() == 'build':
-        os.system(run_commands[args.action])
-    if  args.action.lower() == 'run':
-        os.system(delete_commands[args.action])
+    if args.action == 'build':
+        os.system(build_commands[args.target])
+    if  args.action == 'delete':
+        os.system(delete_commands[args.target])
+    # if args.action == 'clean':
+    #     os.system("docker rm -f $(docker ps -a -q)")
 
 if args.framework == 'tf':
     if args.action in docker_actions:
         message = "{action} can only be used with Docker relate commands".format(action = args.action)
         my_parser.error(message)
         # TODO Add check to see what images are around
-    command_to_run = "docker run experiment_setup {action}".format(action = args.action)
-    os.system(command_to_run)
+    if args.action != 'apply':
+        command_to_run = "docker run --rm experiment_setup {action}".format(action = args.action)
+        os.system(command_to_run)
+    else:
+        AWS_ACCESS_KEY_ID = os.popen("aws --profile default configure get aws_access_key_id").read().rstrip()
+        AWS_SECRET_ACCESS_KEY = os.popen("aws --profile default configure get aws_secret_access_key").read().rstrip()
+
+        apply_command = "docker run --rm -e AWS_ACCESS_KEY_ID={access_key} -e AWS_SECRET_ACCESS_KEY={secret_key} experiment_setup init && ls && terraform -chdir=../AWS_IaC  {action}". \
+            format(access_key = AWS_ACCESS_KEY_ID, secret_key = AWS_SECRET_ACCESS_KEY, action = args.action)
+        os.system(apply_command)
+
+
