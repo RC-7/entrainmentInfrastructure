@@ -15,7 +15,7 @@ my_config = Config(
 def send_to_queue():
 
     sqs = boto3.client('sqs', config = my_config)
-    queue_url = 'https://sqs.eu-west-1.amazonaws.com/961454042945/Set-Score'
+    queue_url = ''
 
     message = {
         'participantID': '1',
