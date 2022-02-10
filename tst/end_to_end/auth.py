@@ -6,8 +6,22 @@ def valid_auth_request(lambda_url):
         'x-api-key' : '',
         'Content-Type': 'application/json'
     }
+    body_values = {
+        'name': 'test_name',
+        'email': 'testEmail@domain.com'
+    }
     response = requests.post(lambda_url, headers=header_values)
+    print('---------------------')
+    print('Valid request response: ')
     print(response.text)
+    print('---------------------')
+
+def send_invalid_auth_request(lambda_url):
+    response = requests.post(lambda_url)
+    print('---------------------')
+    print('Invalid request response: ')
+    print(response.text)
+    print('---------------------')
 
 
 def main():

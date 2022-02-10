@@ -137,6 +137,7 @@ resource "aws_api_gateway_stage" "experiment_auth" {
   stage_name    = "experiment_auth"
 }
 
+# TODO Add throttling limits here
 resource "aws_api_gateway_usage_plan" "auth_usage_plan" {
   name = "auth_usage_plan"
 
