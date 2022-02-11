@@ -12,7 +12,6 @@ dynamodb = boto3.resource('dynamodb')
 EXPERIMENT_TABLE = dynamodb.Table(TABLE_NAME)
 
 def any_and_not_all (iterable):
-    print(iterable)
     return any(iterable) and not all(iterable)
 
 def respond(code, body):
@@ -103,10 +102,6 @@ def create_negative_response_body(message, resonse_body):
 
 def lambda_handler(event, context):
     requestValues =  json.loads(event['body'])
-    
-    for key in requestValues:
-        print(key)
-        print(requestValues[key])
     response_message = {
         'participant_ID': '',
         'message': ''
