@@ -8,3 +8,7 @@ Runner's allow easier actions for terraform and docker:
 
 
 Note: Email password will be stored in AWS Secrets Manager. This step needs to be completed via the console. Currently, it is an env variable that needs to be manually set for the lamba. This has been done for the priving of AWS Screts Manager.
+
+TODO once experiment is ready:
+- Enable email from auth lambdda
+- Enable event source mapping for save score Lambda
