@@ -6,6 +6,8 @@ from base64 import b64encode
 import datetime
 import uuid
 
+from boto3.dynamodb.conditions import Attr
+
 TABLE_NAME = os.getenv('tableName')
 
 dynamodb = boto3.resource('dynamodb')
@@ -28,17 +30,17 @@ def respond(code, body):
     }
 
 def get_participant_id(hash):
-    prijection_attriibute = 'participantID'
+    projection_attriibute = 'participantID'
     fe = buildFilterExpression(hash)
 
     # TODO pull into common util file
-    response = EXPERIMENT_TABLE.scan(FilterExpression = eval(fe), ProjectionExpression = prijection_attriibute)
+    response = EXPERIMENT_TABLE.scan(FilterExpression = eval(fe), ProjectionExpression = projection_attriibute)
 
     participant_count = response['Count']
     participant_ID = response['Items']
 
     while 'LastEvaluatedKey' in response:
-        response = EXPERIMENT_TABLE.query(FilterExpression = eval(fe), ProjectionExpression = prijection_attriibute)
+        response = EXPERIMENT_TABLE.scan(FilterExpression = eval(fe), ProjectionExpression = projection_attriibute)
         participant_ID.append(response['Items'])
         participant_count += response['Count']
 
@@ -56,7 +58,7 @@ def create_participant_table_entry(participant_info):
     )
 
 def buildFilterExpression (hash):
-    fe = "Key('hashIdentifier').eq('" + hash +"')"
+    fe = "Attr('hashIdentifier').eq('" + hash +"')"
     return fe
 
 def create_hash(secret_key, name):
@@ -67,6 +69,8 @@ def create_hash(secret_key, name):
     return hash_value
 
 def check_id(secret_key, name):
+    secret_key = bytes(secret_key, 'utf-8')
+    name = bytes(name, 'utf-8')
     hash_value = create_hash(secret_key, name)
     return get_participant_id(hash_value)
 

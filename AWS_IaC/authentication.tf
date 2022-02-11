@@ -62,9 +62,9 @@ resource "aws_lambda_function" "auth" {
   runtime = "python3.8"
   handler = "authentication.lambda_handler"
 
-  source_code_hash = data.archive_file.lambda_set_score.output_base64sha256
+  source_code_hash = data.archive_file.lambda_auth.output_base64sha256
 
-  role = aws_iam_role.lambda_exec_set_score.arn
+  role = aws_iam_role.lambda_exec_auth.arn
 
   environment {
     variables = {
@@ -171,11 +171,11 @@ resource "aws_lambda_permission" "apigw" {
 ################## Logs #################
 #########################################
 
-resource "aws_cloudwatch_log_group" "authentication" {
-  name = "/aws/lambda/${aws_lambda_function.auth.function_name}"
+# resource "aws_cloudwatch_log_group" "authentication" {
+#   name = "/aws/lambda/${aws_lambda_function.auth.function_name}"
 
-  retention_in_days = var.cloudwatch_retention
-}
+#   retention_in_days = var.cloudwatch_retention
+# }
 
 
 # TODO Unify with entrainment resource
