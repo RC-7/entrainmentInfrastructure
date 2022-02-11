@@ -102,17 +102,6 @@ resource "aws_lambda_function" "set_score" {
 #   function_name    = aws_lambda_function.set_score.arn
 # }
 
-#########################################
-################## Logs #################
-#########################################
-
-resource "aws_cloudwatch_log_group" "set_score" {
-  name = "/aws/lambda/${aws_lambda_function.set_score.function_name}"
-
-  retention_in_days = var.cloudwatch_retention
-}
-
-
 # TODO Unify with entrainment resource
 resource "aws_iam_role_policy_attachment" "lambda_policy_save_score" {
   role       = aws_iam_role.lambda_exec_set_score.name

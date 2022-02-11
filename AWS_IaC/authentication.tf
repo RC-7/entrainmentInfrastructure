@@ -167,17 +167,6 @@ resource "aws_lambda_permission" "apigw" {
   source_arn = "${aws_api_gateway_rest_api.authentication_api.execution_arn}/*/*"
 }
 
-########################################
-################# Logs #################
-########################################
-
-resource "aws_cloudwatch_log_group" "authentication" {
-  name = "/aws/lambda/${aws_lambda_function.auth.function_name}"
-
-  retention_in_days = var.cloudwatch_retention
-}
-
-
 # TODO Unify with entrainment resource
 resource "aws_iam_role_policy_attachment" "lambda_policy_auth" {
   role       = aws_iam_role.lambda_exec_auth.name
