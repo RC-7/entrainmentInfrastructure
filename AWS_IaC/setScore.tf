@@ -97,10 +97,10 @@ resource "aws_lambda_function" "set_score" {
   }
 }
 
-resource "aws_lambda_event_source_mapping" "event_sources_mapping_set_score" {
-  event_source_arn = aws_sqs_queue.set_score_queue.arn
-  function_name    = aws_lambda_function.set_score.arn
-}
+# resource "aws_lambda_event_source_mapping" "event_sources_mapping_set_score" {
+#   event_source_arn = aws_sqs_queue.set_score_queue.arn
+#   function_name    = aws_lambda_function.set_score.arn
+# }
 
 #########################################
 ################## Logs #################
