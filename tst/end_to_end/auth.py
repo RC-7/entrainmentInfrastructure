@@ -8,7 +8,7 @@ def valid_auth_request(lambda_url):
     }
     body_values = {
         'name': 'test_name',
-        'email': 'testEmail@domain.com'
+        'email': 'rashcassim@gmail.com'
     }
     response = requests.post(lambda_url, headers=header_values, data=json.dumps(body_values))
 
@@ -65,7 +65,7 @@ def main():
     f = open('AWS_IaC/aws_resources.json')
     name = 'yes'
     aws_resources = json.load(f)
-    querry_valid_participant(aws_resources['authentication_lambda_url'])
+    valid_auth_request(aws_resources['authentication_lambda_url'])
 
 if __name__ == "__main__":
     main()

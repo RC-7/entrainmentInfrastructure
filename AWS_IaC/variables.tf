@@ -80,3 +80,12 @@ variable "sqs_max_recieve" {
   description = "SQS Max recieve count"
   default     = 4
 }
+
+#############################################
+################### Auth ####################
+#############################################
+
+variable "email_address" {
+  description = "Email address for sending emails to participants"
+  default = "entrainmentexperiment@gmail.com"
+}

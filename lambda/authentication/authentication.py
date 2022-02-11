@@ -5,6 +5,7 @@ import hashlib
 from base64 import b64encode
 import datetime
 import uuid
+import smtplib
 
 from boto3.dynamodb.conditions import Attr
 
@@ -74,11 +75,34 @@ def check_id(secret_key, name):
     hash_value = create_hash(secret_key, name)
     return get_participant_id(hash_value)
 
-def email_secret_key(key, email):
-    print(key)
-    print(email)
-    # SES Stuff
-    pass
+def email_secret_key(key, email_participant):
+    email_from = os.getenv('email_address')
+    reply_to = email_from
+
+    subject = '[Entrainment Experiment] Your secret key'
+    body = 'Hi <br><br> Thank you again for participating in the study. Your secret key is: <b>{key}</b>. <br><br> \
+        Please keep this safe as you will need it for the next session and it is not shared with anyone else'.format(key = key)
+
+    username = email_from
+    password = os.getenv('password')
+
+    gmail_smtp_server = 'smtp.gmail.com'
+    google_smtp_port = 587
+
+    message = "From: {email_from}\nTo: {email_to}\nContent-type: text/html\nReply-To: {email_reply}\nSubject: {subject}\n\n{body}". \
+        format(email_from = email_from, email_to = email_participant, email_reply = reply_to , subject = subject, body = body)
+    
+    try:
+        smrp_session = smtplib.SMTP(gmail_smtp_server, google_smtp_port)
+        smrp_session.ehlo()
+        smrp_session.starttls()
+        smrp_session.login(username, password)
+        smrp_session.sendmail(email_from, email_participant, message)
+        smrp_session.close()
+        return True
+    except Exception as ex:
+        print (ex)
+        return False
 
 def create_participant(name, email):
     key_encoded = os.urandom(5)

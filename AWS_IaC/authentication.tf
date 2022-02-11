@@ -69,6 +69,8 @@ resource "aws_lambda_function" "auth" {
   environment {
     variables = {
       tableName = "${var.table_name}"
+      email_address = "${var.email_address}"
+      password = ""
     }
   }
 }
