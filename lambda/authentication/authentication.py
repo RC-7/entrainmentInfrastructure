@@ -119,9 +119,8 @@ def create_participant(name, email):
     }
     create_participant_table_entry(participant_info)
     
-    secret_key_string = str(secret_key.decode('utf-8'))
-
     # Return status
+    # secret_key_string = str(secret_key.decode('utf-8'))
     # status = email_secret_key(secret_key_string, email)
 
     return [True, participant_ID]
