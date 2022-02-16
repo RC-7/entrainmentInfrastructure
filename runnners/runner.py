@@ -51,7 +51,7 @@ if args.framework == 'tf':
         AWS_SECRET_ACCESS_KEY = os.popen("aws --profile default configure get aws_secret_access_key").read().rstrip()
 
         apply_command = "docker run --rm -e AWS_ACCESS_KEY_ID={access_key} -e AWS_SECRET_ACCESS_KEY={secret_key} \
-            experiment_setup init && terraform -chdir=../AWS_IaC  {action} && ./../AWS_IaC/saveOutputs.sh". \
+            experiment_setup init && terraform -chdir=../AWS_IaC  {action} &&  terraform -chdir=../AWS_IaC output -json > aws_resources.json". \
             format(access_key = AWS_ACCESS_KEY_ID, secret_key = AWS_SECRET_ACCESS_KEY, action = args.action)
         os.system(apply_command)
 

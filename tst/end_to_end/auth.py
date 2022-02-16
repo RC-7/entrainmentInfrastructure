@@ -1,9 +1,9 @@
 import requests
 import json
 
-def valid_auth_request(lambda_url):
+def valid_auth_request(lambda_url, api_key):
     header_values = {
-        'x-api-key' : '',
+        'x-api-key' : api_key,
         # 'Content-Type': 'application/json'
     }
     body_values = {
@@ -18,9 +18,9 @@ def valid_auth_request(lambda_url):
     print('---------------------')
 
 
-def querry_valid_participant(lambda_url):
+def querry_valid_participant(lambda_url, api_key):
     header_values = {
-        'x-api-key' : '',
+        'x-api-key' : api_key,
         # 'Content-Type': 'application/json'
     }
     body_values = {
@@ -35,7 +35,7 @@ def querry_valid_participant(lambda_url):
     print(response.text)
     print('---------------------')
 
-def querry_invalid_secret_key(lambda_url):
+def querry_invalid_secret_key(lambda_url, api_key):
     header_values = {
         'x-api-key' : '',
         # 'Content-Type': 'application/json'
@@ -63,9 +63,10 @@ def send_invalid_auth_request(lambda_url):
 
 def main():
     f = open('AWS_IaC/aws_resources.json')
-    name = 'yes'
     aws_resources = json.load(f)
-    valid_auth_request(aws_resources['authentication_lambda_url'])
+    lambda_url = aws_resources['authentication_lambda_url']['value']
+    api_key = aws_resources['authentication_lambda_api_key'['value']]
+    valid_auth_request(lambda_url, api_key)
 
 if __name__ == "__main__":
     main()
