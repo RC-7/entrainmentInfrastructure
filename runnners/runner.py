@@ -56,3 +56,4 @@ if args.framework == 'tf':
                         "-chdir=../AWS_IaC output -json > aws_resources.json". \
             format(access_key=AWS_ACCESS_KEY_ID, secret_key=AWS_SECRET_ACCESS_KEY, action=args.action)
         os.system(apply_command)
+        os.system('cp ../AWS_IaC/aws_resources.json ../testing_interface')

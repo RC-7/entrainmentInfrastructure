@@ -19,16 +19,16 @@ output "authentication_lambda_url" {
   value = aws_api_gateway_deployment.authentication.invoke_url
 }
 
-output "authentication_lambda_api_key" {
+output "authentication_api_key" {
   value = aws_api_gateway_api_key.auth_api_key.value
   sensitive = true
 }
 
-output "get_data_lambda_url" {
+output "get_data_url" {
   value = aws_api_gateway_deployment.get_data.invoke_url
 }
 
-output "get_data_lambda_api_key" {
+output "get_data_api_key" {
   value = aws_api_gateway_api_key.get_data_api_key.value
   sensitive = true
 }

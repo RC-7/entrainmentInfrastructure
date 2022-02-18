@@ -65,7 +65,7 @@ def main():
     f = open('AWS_IaC/aws_resources.json')
     aws_resources = json.load(f)
     lambda_url = aws_resources['authentication_lambda_url']['value']
-    api_key = aws_resources['authentication_lambda_api_key'['value']]
+    api_key = aws_resources['authentication_api_key'['value']]
     valid_auth_request(lambda_url, api_key)
 
 if __name__ == "__main__":

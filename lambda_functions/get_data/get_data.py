@@ -84,7 +84,7 @@ def lambda_handler(event, _):
         "generic": build_generic_filter
     }
 
-    header_value = json.loads(event['headers'])
+    header_value = json.loads(event['headers'])['dataType']
     print(header_value)
     request_values = json.loads(event['body'])
     projection_attributes = request_values['projectionAttributes']
