@@ -1,8 +1,9 @@
-from interface import Interface
+from gui import GUI
 
 
 def main():
-    gui = Interface()
+    gui = GUI()
+
 
 if __name__ == "__main__":
     main()
