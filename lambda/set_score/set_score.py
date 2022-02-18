@@ -12,7 +12,19 @@ def write_score(score_data):
     )
 
 def lambda_handler(event, context):
+
+    data_types = ['Score', 'LevelID', 'PData']
+    required_column_values = {
+        'Score': ('participantID', 'score', 'timestamp', 'levelID'),
+        'LevelID': ('participantID', 'startTime', 'timestamp', 'levelID', 'endTime'),
+        'PData': ('participantID', 'experience', 'gender', 'age', 'timestamp')
+    }
+
     for record in event['Records']:
-        if 'type' in record['messageAttributes'] and record['messageAttributes']['type']['stringValue'] == 'Score' :
+        data_type = record['messageAttributes']['type']['stringValue']
+        if 'type' in record['messageAttributes'] and data_type in data_types :
             body = json.loads(record["body"])
-            write_score(body)
+            if all (key in body for key in required_column_values[data_type]):
+                write_score(body)
+            else:
+                 raise Exception('Invalid column values, check DLQ' +  event)
