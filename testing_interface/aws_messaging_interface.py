@@ -7,7 +7,7 @@ import requests
 
 
 def load_aws_resource_values():
-    f = open('AWS_IaC/aws_resources.json')
+    f = open('aws_resources.json')
     aws_resources = json.load(f)
     f.close()
     return aws_resources
