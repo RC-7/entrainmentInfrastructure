@@ -89,3 +89,27 @@ variable "email_address" {
   description = "Email address for sending emails to participants"
   default = "entrainmentexperiment@gmail.com"
 }
+
+#############################################
+################### API ####################
+#############################################
+
+variable "throttle_burst_limit" {
+  description = "The maximum rate limit"
+  default     = 5
+}
+
+variable "throttle_rate_limit" {
+  description = "The API request steady-state rate limit."
+  default     = 10
+}
+
+variable "quota_limit" {
+  description = " The maximum number of requests that can be made in a given time period."
+  default     = 500
+}
+
+variable "quota_preiod" {
+  description = " The period that quota limits are applied."
+  default     = "MONTH"
+}
