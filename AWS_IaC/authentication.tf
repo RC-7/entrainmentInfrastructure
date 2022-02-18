@@ -1,8 +1,8 @@
 data "archive_file" "lambda_auth" {
   type = "zip"
 
-  source_dir  = "${path.module}/../lambda/authentication"
-  output_path = "${path.module}/../lambda/authentication/authentication.zip"
+  source_dir  = "${path.module}/../lambda_functions/authentication"
+  output_path = "${path.module}/../lambda_functions/authentication/authentication.zip"
 }
 
 resource "aws_s3_bucket_object" "auth" {

@@ -16,8 +16,8 @@ resource "aws_sqs_queue" "deadletter_queue" {
 data "archive_file" "lambda_set_score" {
   type = "zip"
 
-  source_dir  = "${path.module}/../lambda/set_score"
-  output_path = "${path.module}/../lambda/set_score/set_score.zip"
+  source_dir  = "${path.module}/../lambda_functions/set_score"
+  output_path = "${path.module}/../lambda_functions/set_score/set_score.zip"
 }
 
 resource "aws_s3_bucket_object" "set_score" {

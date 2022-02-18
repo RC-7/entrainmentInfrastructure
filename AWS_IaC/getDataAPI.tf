@@ -1,8 +1,8 @@
 data "archive_file" "lambda_getData" {
   type = "zip"
 
-  source_dir  = "${path.module}/../lambda/get_data"
-  output_path = "${path.module}/../lambda/get_data/get_data.zip"
+  source_dir  = "${path.module}/../lambda_functions/get_data"
+  output_path = "${path.module}/../lambda_functions/get_data/get_data.zip"
 }
 
 resource "aws_s3_bucket_object" "getData" {
