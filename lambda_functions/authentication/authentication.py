@@ -148,8 +148,7 @@ def lambda_handler(event, context):
         'message': ''
     }
     response_code = ''
-    #  TODO add are you sure to GUI fe if secret key is not inputted
-    # if 'secret_key' in request_values.keys():
+
     if all(key in request_values for key in ('secret_key', 'name')):
         name = request_values['name']
         secret_key = request_values['secret_key']
