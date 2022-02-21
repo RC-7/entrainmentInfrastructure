@@ -68,9 +68,9 @@ resource "aws_lambda_function" "auth" {
 
   environment {
     variables = {
-      tableName = "${var.table_name}"
+      tableName     = "${var.table_name}"
       email_address = "${var.email_address}"
-      password = ""
+      password      = ""
     }
   }
 }
@@ -145,6 +145,14 @@ resource "aws_api_gateway_usage_plan" "auth_usage_plan" {
   api_stages {
     api_id = aws_api_gateway_rest_api.authentication_api.id
     stage  = aws_api_gateway_deployment.authentication.stage_name
+  }
+  throttle_settings {
+    burst_limit = var.throttle_burst_limit
+    rate_limit  = var.throttle_rate_limit
+  }
+  quota_settings {
+    limit  = var.quota_limit
+    period = var.quota_preiod
   }
 }
 

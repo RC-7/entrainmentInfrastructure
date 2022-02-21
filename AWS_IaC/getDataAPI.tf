@@ -63,7 +63,7 @@ resource "aws_lambda_function" "get_data" {
 
   source_code_hash = data.archive_file.lambda_getData.output_base64sha256
 
-  role = aws_iam_role.lambda_policy_get_data.arn
+  role = aws_iam_role.lambda_exec_get_data.arn
 
   environment {
     variables = {
@@ -142,13 +142,13 @@ resource "aws_api_gateway_usage_plan" "get_data_usage_plan" {
     api_id = aws_api_gateway_rest_api.get_data_api.id
     stage  = aws_api_gateway_deployment.get_data.stage_name
   }
-  throttle_settings = {
-    burst_limit = $var.throttle_burst_limit
-    rate_limit = $var.throttle_rate_limit
+  throttle_settings {
+    burst_limit = var.throttle_burst_limit
+    rate_limit  = var.throttle_rate_limit
   }
-  quota_settings ={
-    limit = $var.quota_limit
-    period = "${var.quota_preiod}"
+  quota_settings {
+    limit  = var.quota_limit
+    period = var.quota_preiod
   }
 }
 
@@ -163,7 +163,7 @@ resource "aws_api_gateway_usage_plan_key" "get_data_usage_plan_key" {
   usage_plan_id = aws_api_gateway_usage_plan.get_data_usage_plan.id
 }
 
-resource "aws_lambda_permission" "apigw" {
+resource "aws_lambda_permission" "apigw_get_data" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.get_data.function_name

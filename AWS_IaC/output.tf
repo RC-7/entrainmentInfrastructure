@@ -20,7 +20,7 @@ output "authentication_lambda_url" {
 }
 
 output "authentication_api_key" {
-  value = aws_api_gateway_api_key.auth_api_key.value
+  value     = aws_api_gateway_api_key.auth_api_key.value
   sensitive = true
 }
 
@@ -29,6 +29,6 @@ output "get_data_url" {
 }
 
 output "get_data_api_key" {
-  value = aws_api_gateway_api_key.get_data_api_key.value
+  value     = aws_api_gateway_api_key.get_data_api_key.value
   sensitive = true
 }

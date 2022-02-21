@@ -34,12 +34,12 @@ variable "table_billing_mode" {
 
 variable "table_read_capacity" {
   description = "The number of read units for this index. Must be set if billing_mode is set to PROVISIONED."
-  default     = 5
+  default     = 1
 }
 
 variable "table_write_capacity" {
   description = "The number of write units for this index. Must be set if billing_mode is set to PROVISIONED."
-  default     = 5
+  default     = 1
 }
 
 variable "table_hash_key" {
@@ -87,7 +87,7 @@ variable "sqs_max_recieve" {
 
 variable "email_address" {
   description = "Email address for sending emails to participants"
-  default = "entrainmentexperiment@gmail.com"
+  default     = "entrainmentexperiment@gmail.com"
 }
 
 #############################################
