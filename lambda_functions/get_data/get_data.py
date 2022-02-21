@@ -16,14 +16,14 @@ def build_entrainment_filter(_):
     time_five_min_ago = str(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5))
     fe = ""
     fe += "Key('timestamp').gt('" + time_five_min_ago + "') & "
-    fe += "Attr('customEntrainment').begins_with('" + "{" + "')"
+    fe += "Attr('customEntrainment').exists()"
     return fe
 
 
 def build_generic_filter(requestValues):
-    filter_values = requestValues['projectionValues']
+    filter_values = requestValues['filterValues']
     table_keys = ['timestamp', 'participantID']
-    key_actions = ['gt', 'between', 'le', 'lt', 'ge', 'begins_with']
+    key_actions = ['gt', 'between', 'le', 'lt', 'ge', 'begins_with', 'eq', 'exists']
 
     fe = ""
 
@@ -37,9 +37,11 @@ def build_generic_filter(requestValues):
             fe += "Attr('" + key + "')."
         if filter_values[key]['condition'] == 'between':
             filter_value = filter_values[key]['value']
-            fe += key + "('" + filter_value[0] + "','" + filter_value[1] + "')"
+            fe += filter_values[key]['condition'] + "('" + filter_value[0] + "','" + filter_value[1] + "')"
+        elif filter_values[key]['condition'] == 'exists':
+            fe += filter_values[key]['condition'] + "()"
         else:
-            fe += key + "('" + filter_values[key]['value'] + "')"
+            fe += filter_values[key]['condition'] + "('" + filter_values[key]['value'] + "')"
         fe += ' & '
     return fe[:-2]
 
@@ -84,11 +86,11 @@ def lambda_handler(event, _):
         "generic": build_generic_filter
     }
 
-    header_value = json.loads(event['headers'])['dataType']
-    print(header_value)
+    header_value = event['headers']['dataType']
     request_values = json.loads(event['body'])
     projection_attributes = request_values['projectionAttributes']
     filter_expression = header_lookup[header_value](request_values)
+    print(filter_expression)
     if not filter_expression:
         return respond('Invalid filter expression', '404')
     [data, status] = get_data(filter_expression, projection_attributes)
