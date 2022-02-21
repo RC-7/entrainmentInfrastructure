@@ -12,15 +12,12 @@ my_config = Config(
         'mode': 'standard'
     }
 )
+sqs = boto3.client('sqs', config = my_config)
+f = open('runnners/aws_resources.json')
+aws_resources = json.load(f)
+queue_url = aws_resources['set_data_sqs_url']['value']
 
 def send_to_queue(message, attributes):
-
-    sqs = boto3.client('sqs', config = my_config)
-    f = open('runnners/aws_resources.json')
-    aws_resources = json.load(f)
-    queue_url = aws_resources['set_data_sqs_url']['value']
-
-   
 
     response = sqs.send_message(
         QueueUrl = queue_url,
