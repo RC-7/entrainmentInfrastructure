@@ -8,8 +8,8 @@ resource "aws_cloudwatch_log_group" "authentication" {
   retention_in_days = var.cloudwatch_retention
 }
 
-resource "aws_cloudwatch_log_group" "set_score" {
-  name = "/aws/lambda/${aws_lambda_function.set_score.function_name}"
+resource "aws_cloudwatch_log_group" "set_data" {
+  name = "/aws/lambda/${aws_lambda_function.set_data.function_name}"
 
   retention_in_days = var.cloudwatch_retention
 }

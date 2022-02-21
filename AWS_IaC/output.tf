@@ -10,9 +10,9 @@ output "experimentTableArn" {
   value       = aws_dynamodb_table.experimentTable.arn
 }
 
-output "set_score_sqs_url" {
+output "set_data_sqs_url" {
   description = "The url for the Set Score SQS queue."
-  value       = aws_sqs_queue.set_score_queue.url
+  value       = aws_sqs_queue.set_data_queue.url
 }
 
 output "authentication_lambda_url" {

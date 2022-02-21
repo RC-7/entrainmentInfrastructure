@@ -14,11 +14,12 @@ def write_score(score_data):
 
 
 def lambda_handler(event, context):
-    data_types = ['Score', 'LevelID', 'PData']
+    data_types = ['Score', 'LevelID', 'PData', 'EntrainmentSettings']
     required_column_values = {
         'Score': ('participantID', 'score', 'timestamp', 'levelID'),
         'LevelID': ('participantID', 'startTime', 'timestamp', 'levelID', 'endTime'),
-        'PData': ('participantID', 'experience', 'gender', 'age', 'timestamp')
+        'PData': ('participantID', 'experience', 'sex', 'age', 'timestamp'),
+        'EntrainmentSettings': ('participantID', 'customEntrainment', 'session', 'timestamp')
     }
 
     for record in event['Records']:

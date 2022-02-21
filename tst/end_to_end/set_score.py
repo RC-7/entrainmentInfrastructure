@@ -2,6 +2,7 @@ from distutils.command.config import config
 import boto3
 import json
 from botocore.config import Config
+import datetime
 
 my_config = Config(
     region_name = 'eu-west-1',
@@ -12,33 +13,97 @@ my_config = Config(
     }
 )
 
-def send_to_queue():
+def send_to_queue(message, attributes):
 
     sqs = boto3.client('sqs', config = my_config)
-    queue_url = ''
+    f = open('runnners/aws_resources.json')
+    aws_resources = json.load(f)
+    queue_url = aws_resources['set_data_sqs_url']['value']
 
-    message = {
-        'participantID': '1',
-        'score': '3',
-        'timestamp': '12232123',
-        'levelID': '1D'
-    }
+   
 
     response = sqs.send_message(
         QueueUrl = queue_url,
         DelaySeconds = 10,
-        MessageAttributes={
-            'type' : {
-                'DataType': 'String',
-                'StringValue': 'Score'
-            },
-        },
-        MessageBody=json.dumps(message)
+        MessageAttributes = attributes,
+        MessageBody = json.dumps(message)
     )
     print(response)
 
 def main():
-    send_to_queue()
+    #############################
+    ########### Score ###########
+    #############################
+    message = {
+        'participantID': '1',
+        'score': '3',
+        'timestamp': str(datetime.datetime.now()),
+        'levelID': '1D'
+    }
+    attributes = {
+            'type' : {
+                'DataType': 'String',
+                'StringValue': 'Score'
+            },
+        }
+    send_to_queue(message, attributes)
+    #############################
+    ######## Entrainment ########
+    #############################
+    message = {
+        'participantID': '1',
+        'customEntrainment': {
+            'frequency': 20,
+            'colour': 'red'
+        },
+        'timestamp': str(datetime.datetime.now()),
+        'session': '1'
+    }
+    attributes = {
+        'type' : {
+            'DataType': 'String',
+            'StringValue': 'EntrainmentSettings'
+        },
+    }
+    send_to_queue(message, attributes)
+    
+    #############################
+    ########## LevelID ##########
+    #############################
+    message = {
+        'participantID': '1',
+        'levelID': '7',
+        'timestamp': str(datetime.datetime.now()),
+        'startTime': str(datetime.datetime.now()),
+        'endTime': str(datetime.datetime.now()),
+        'session': '1'
+    }
+    attributes = {
+        'type' : {
+            'DataType': 'String',
+            'StringValue': 'LevelID'
+        },
+    }
+    send_to_queue(message, attributes)
+
+    #############################
+    ########### PData ###########
+    #############################
+
+    message = {
+        'participantID': '1',
+        'sex': 'M',
+        'age': 2,
+        'experience': 0,
+        'timestamp': str(datetime.datetime.now()),
+    }
+    attributes = {
+        'type' : {
+            'DataType': 'String',
+            'StringValue': 'PData'
+        },
+    }
+    send_to_queue(message, attributes)
 
 if __name__ == "__main__":
     main()

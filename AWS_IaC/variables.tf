@@ -58,12 +58,12 @@ variable "environment" {
 }
 
 #############################################
-################# Set score #################
+################# Set data #################
 #############################################
 
-variable "set_score_queue" {
-  description = "Queue name for set score workflow"
-  default     = "Set-Score"
+variable "set_data_queue" {
+  description = "Queue name for set data workflow"
+  default     = "Set-Data"
 }
 
 variable "sqs_retention" {
