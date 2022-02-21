@@ -97,10 +97,10 @@ resource "aws_lambda_function" "set_data" {
   }
 }
 
-resource "aws_lambda_event_source_mapping" "event_sources_mapping_set_data" {
-  event_source_arn = aws_sqs_queue.set_data_queue.arn
-  function_name    = aws_lambda_function.set_data.arn
-}
+# resource "aws_lambda_event_source_mapping" "event_sources_mapping_set_data" {
+#   event_source_arn = aws_sqs_queue.set_data_queue.arn
+#   function_name    = aws_lambda_function.set_data.arn
+# }
 
 # TODO Unify with entrainment resource
 resource "aws_iam_role_policy_attachment" "lambda_policy_save_data" {
