@@ -6,6 +6,8 @@ from base64 import b64encode
 import datetime
 import uuid
 import smtplib
+import random
+from botocore.exceptions import ClientError
 
 from boto3.dynamodb.conditions import Attr
 
@@ -32,24 +34,37 @@ def respond(code, body):
         },
     }
 
+def query_table(fe, projection_attributes):
 
-def get_participant_id(hash_value):
-    projection_attribute = 'participantID'
-    fe = build_filter_expression(hash_value)
-
-    # TODO pull into common util file
-    response = EXPERIMENT_TABLE.scan(FilterExpression=eval(fe), ProjectionExpression=projection_attribute)
-
-    participant_count = response['Count']
-    participant_id = response['Items']
+    response = EXPERIMENT_TABLE.scan(FilterExpression=eval(fe), ProjectionExpression=projection_attributes)
+    count = response['Count']
+    data = response['Items']
 
     while 'LastEvaluatedKey' in response:
-        response = EXPERIMENT_TABLE.scan(FilterExpression=eval(fe), ProjectionExpression=projection_attribute)
-        participant_id.append(response['Items'])
-        participant_count += response['Count']
+        response = EXPERIMENT_TABLE.scan(FilterExpression=eval(fe), ProjectionExpression=projection_attributes)
+        data.append(response['Items'])
+        count += response['Count']
+    return [count, data]
+
+
+# Need to expand on this if an experiment has > 2 sessions
+def record_return_participant(participant_info_from_table):
+    participant_info = {
+        'participantID': participant_info_from_table[0]['participantID'],
+        'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
+        'session': '2' 
+    }
+    create_participant_table_entry(participant_info)
+
+def get_participant_data(hash_value):
+    projection_attributes = 'participantID, assignedGroup'
+    fe = build_filter_expression(hash_value)
+
+    [participant_count, participant_info] = query_table(fe, projection_attributes)
 
     if participant_count == 1:
-        return [True, participant_id[0]]
+        record_return_participant(participant_info)
+        return [True, *participant_info]
     elif participant_count == 0:
         return [False, 0]
     elif participant_count > 1:
@@ -63,7 +78,8 @@ def create_participant_table_entry(participant_info):
 
 
 def build_filter_expression(hash_value):
-    fe = "Attr('hashIdentifier').eq('" + hash_value + "')"
+    fe = "Attr('hashIdentifier').eq('" + hash_value + "') & "
+    fe += "Attr('assignedGroup').exists()"
     return fe
 
 
@@ -79,7 +95,7 @@ def check_id(secret_key, name):
     secret_key = bytes(secret_key, 'utf-8')
     name = bytes(name, 'utf-8')
     hash_value = create_hash(secret_key, name)
-    return get_participant_id(hash_value)
+    return get_participant_data(hash_value)
 
 
 def email_secret_key(key, email_participant):
@@ -113,19 +129,61 @@ def email_secret_key(key, email_participant):
         print(ex)
         return False
 
+def check_count_variables():
+    count_control_group = os.getenv('controlCount')
+    count_test_group = os.getenv('interventionCount')
+    if count_control_group =='':
+        fe = "Attr('assignedGroup').eq('C')"
+        projection_attribute = 'assignedGroup'
+        try:
+            [control_group_count, _] = query_table(fe, projection_attribute)
+            os.environ["controlCount"] = str(control_group_count)
+        except ClientError as err:
+             os.environ["controlCount"] = '0'
+    if count_test_group == '':
+        fe = "Attr('assignedGroup').eq('T')"
+        projection_attribute = 'assignedGroup'
+        try:
+            [test_group_count, _] = query_table(fe, projection_attribute)
+            os.environ["interventionCount"] = str(test_group_count)
+        except ClientError as err:
+             os.environ["interventionCount"] = '0'
+
+def assign_testing_group():
+    check_count_variables()
+    count_control_group = os.getenv('controlCount')
+    count_test_group = os.getenv('interventionCount')
+    group_assigned = ''
+    if(count_test_group == count_control_group):
+        group_assigned = random.choice(['C', 'T'])
+    elif count_test_group > count_control_group:
+        group_assigned = 'C'
+    else:
+        group_assigned = 'T'
+
+    if group_assigned == 'C':
+        os.environ["controlCount"] = str(int(count_control_group)+1)
+    else:
+        os.environ["interventionCount"] = str(int(count_test_group)+1)
+    return group_assigned
+
+
+
+
 
 def create_participant(name, email):
     key_encoded = os.urandom(5)
     secret_key = b64encode(key_encoded)
     encoded_name = bytes(name, 'utf-8')
     participant_hash = create_hash(secret_key, encoded_name)
-
+    group = assign_testing_group()
     participant_ID = str(uuid.uuid4())
 
     participant_info = {
         'participantID': participant_ID,
         'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
-        'hashIdentifier': participant_hash
+        'hashIdentifier': participant_hash,
+        'assignedGroup': group
     }
     create_participant_table_entry(participant_info)
 
@@ -133,7 +191,7 @@ def create_participant(name, email):
     # secret_key_string = str(secret_key.decode('utf-8'))
     # status = email_secret_key(secret_key_string, email)
 
-    return [True, participant_ID]
+    return [True, participant_ID, group]
 
 
 def create_negative_response_body(message, response_body):
@@ -145,24 +203,28 @@ def lambda_handler(event, context):
     request_values = json.loads(event['body'])
     response_message = {
         'participant_ID': '',
-        'message': ''
+        'message': '',
+        'group': '',
+        'session': ''
     }
     response_code = ''
 
     if all(key in request_values for key in ('secret_key', 'name')):
         name = request_values['name']
         secret_key = request_values['secret_key']
-        [status, participant_id] = check_id(secret_key, name)
-        if status:
-            response_message['participant_ID'] = participant_id
+        participant_data = check_id(secret_key, name)
+        if participant_data[0]:
+            response_message['participant_ID'] = participant_data[1]['participantID']
+            response_message['group'] = participant_data[1]['assignedGroup']
+            response_message['session'] = 2
             response_message['message'] = 'Participant ID found'
             response_code = '200'
         else:
             response_code = '204'
-            if participant_id == 0:
+            if participant_data[1] == 0:
                 create_negative_response_body('No participant ID found for name and secret key provided',
                                               response_message)
-            if participant_id == -1:
+            if participant_data[1] == -1:
                 create_negative_response_body('Multiple participant ID\'s found', response_message)
 
     if any_and_not_all(key in request_values for key in ('secret_key', 'name')) and not \
@@ -173,9 +235,11 @@ def lambda_handler(event, context):
             'secret_key' in request_values.keys():
         name = request_values['name']
         email = request_values['email']
-        [status, participant_id] = create_participant(name, email)
+        [status, participant_id, group] = create_participant(name, email)
         if status:
             response_message['participant_ID'] = participant_id
+            response_message['group'] = group
+            response_message['session'] = 1
             response_message['message'] = 'Participant ID created, check your email for your secret code'
             response_code = '200'
         else:
