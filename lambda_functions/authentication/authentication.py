@@ -124,7 +124,7 @@ def create_participant(name, email):
 
     participant_info = {
         'participantID': participant_ID,
-        'timestamp': str(datetime.datetime.now()),
+        'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
         'hashIdentifier': participant_hash
     }
     create_participant_table_entry(participant_info)

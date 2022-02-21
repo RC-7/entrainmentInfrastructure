@@ -53,7 +53,7 @@ def main():
             'frequency': 20,
             'colour': 'red'
         },
-        'timestamp': str(datetime.datetime.now()),
+        'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
         'session': '1'
     }
     attributes = {
