@@ -32,3 +32,8 @@ output "get_data_api_key" {
   value     = aws_api_gateway_api_key.get_data_api_key.value
   sensitive = true
 }
+
+output "participant_data_bucket" {
+  value     = aws_s3_bucket.participant_data_bucket.name
+  sensitive = true
+}
