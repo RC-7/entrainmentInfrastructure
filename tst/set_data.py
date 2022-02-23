@@ -50,9 +50,19 @@ def main():
     message = {
         'participantID': '1',
         'customEntrainment': {
-            'frequency': 20,
-            'colour': 'red'
-        },
+            "visual": {
+                'colour': 'red',
+                'frequency': '500',
+                },
+            'audio': {
+                'baseFrequency': 'red',
+                'entrainmentFrequency': '500',
+                },
+            'neurofeedback': {
+                'redChannel': '81',
+                'greenChannel': '169'
+                },
+            },
         'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
         'session': '1'
     }
