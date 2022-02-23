@@ -13,3 +13,9 @@ resource "aws_cloudwatch_log_group" "set_data" {
 
   retention_in_days = var.cloudwatch_retention
 }
+
+resource "aws_cloudwatch_log_group" "get_data" {
+  name = "/aws/lambda/${aws_lambda_function.get_data.function_name}"
+
+  retention_in_days = var.cloudwatch_retention
+}
