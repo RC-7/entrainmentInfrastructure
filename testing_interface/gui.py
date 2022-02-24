@@ -48,8 +48,6 @@ class GUI(QWidget):
         else:
             self.active_gui_elements['Warn'].setText(response_message)
 
-
-
     def add_initial_page(self):
         blurb_label = QLabel(self)
         blurb_label.setText('Please enter your details below to sign up or sign in to the experiment.\nEnsure that you '

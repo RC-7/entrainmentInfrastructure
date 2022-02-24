@@ -34,8 +34,8 @@ def respond(code, body):
         },
     }
 
-def query_table(fe, projection_attributes):
 
+def query_table(fe, projection_attributes):
     response = EXPERIMENT_TABLE.scan(FilterExpression=eval(fe), ProjectionExpression=projection_attributes)
     count = response['Count']
     data = response['Items']
@@ -52,9 +52,10 @@ def record_return_participant(participant_info_from_table):
     participant_info = {
         'participantID': participant_info_from_table[0]['participantID'],
         'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
-        'session': '2' 
+        'session': '2'
     }
     create_participant_table_entry(participant_info)
+
 
 def get_participant_data(hash_value):
     projection_attributes = 'participantID, assignedGroup'
@@ -129,17 +130,18 @@ def email_secret_key(key, email_participant):
         print(ex)
         return False
 
+
 def check_count_variables():
     count_control_group = os.getenv('controlCount')
     count_test_group = os.getenv('interventionCount')
-    if count_control_group =='':
+    if count_control_group == '':
         fe = "Attr('assignedGroup').eq('C')"
         projection_attribute = 'assignedGroup'
         try:
             [control_group_count, _] = query_table(fe, projection_attribute)
             os.environ["controlCount"] = str(control_group_count)
         except ClientError as err:
-             os.environ["controlCount"] = '0'
+            os.environ["controlCount"] = '0'
     if count_test_group == '':
         fe = "Attr('assignedGroup').eq('T')"
         projection_attribute = 'assignedGroup'
@@ -147,14 +149,15 @@ def check_count_variables():
             [test_group_count, _] = query_table(fe, projection_attribute)
             os.environ["interventionCount"] = str(test_group_count)
         except ClientError as err:
-             os.environ["interventionCount"] = '0'
+            os.environ["interventionCount"] = '0'
+
 
 def assign_testing_group():
     check_count_variables()
     count_control_group = os.getenv('controlCount')
     count_test_group = os.getenv('interventionCount')
     group_assigned = ''
-    if(count_test_group == count_control_group):
+    if count_test_group == count_control_group:
         group_assigned = random.choice(['C', 'T'])
     elif count_test_group > count_control_group:
         group_assigned = 'C'
@@ -162,13 +165,10 @@ def assign_testing_group():
         group_assigned = 'T'
 
     if group_assigned == 'C':
-        os.environ["controlCount"] = str(int(count_control_group)+1)
+        os.environ["controlCount"] = str(int(count_control_group) + 1)
     else:
-        os.environ["interventionCount"] = str(int(count_test_group)+1)
+        os.environ["interventionCount"] = str(int(count_test_group) + 1)
     return group_assigned
-
-
-
 
 
 def create_participant(name, email):
