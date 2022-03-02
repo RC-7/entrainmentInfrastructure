@@ -8,7 +8,7 @@ from pygds import GDSError
 from abstract_classes.abstract_eeg_device_interface import AbstractEEGDeviceInterface
 
 electrodes_file = open('constants/electrodes.json')
-DEFAULT_ELECTRODES = json.loads(electrodes_file)['active_electrodes']
+DEFAULT_ELECTRODES = json.load(electrodes_file)['active_electrodes']
 
 
 def create_active_electrode_bool_array(active_electrode_numbers):
@@ -24,7 +24,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.eeg_device = pygds.GDS()
         self.configure()
         self.print_all_device_info()
-        self.active_data = np.zeros([1, sum(self.active_electrodes)])
+        self.active_data = np.zeros([1, 80])
 
     # TODO expand for other Gtec devices
     # TODO make dynamic for selecting filters
@@ -41,39 +41,29 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         # Set first filter
         for ch in self.eeg_device.Channels:
             ch.Acquire = True
-        if N:
+            ch.BipolarChannel = 64
             ch.NotchFilterIndex = N[0]['NotchFilterIndex']
-        if BP:
-            ch.BandpassFilterIndex = BP[0]['BandpassFilterIndex']
-        # Needed only for testing
-        print('-------------------------------')
-        print('sampling rates')
-        print(all_sampling_rates)
-        print('notch filters')
-        print(N)
-        print('bandpass filters')
-        print(BP)
-        print('-------------------------------')
+            ch.BandpassFilterIndex = BP[27]['BandpassFilterIndex']
         self.eeg_device.SetConfiguration()
 
     def impedance_check(self):
-        impedance_values = self.eeg_device.GetImpedence(active=self.active_electrodes)
+        impedance_values = self.eeg_device.GetImpedance()
         return impedance_values
 
     def get_data(self, number_of_cycles=1):
-        self.active_data = np.zeros([number_of_cycles, sum(self.active_electrodes)])
-        data_received_cycles = 0
-
+        self.active_data = np.zeros([number_of_cycles*512,80])
+        data_received_cycles = 1
+        self.active_data = self.eeg_device.GetData(self.eeg_device.SamplingRate)
         while data_received_cycles < number_of_cycles:
-            self.active_data[data_received_cycles] = self.eeg_device.GetData(self.eeg_device.SamplingRate)
+            self.active_data = np.append(self.active_data, self.eeg_device.GetData(self.eeg_device.SamplingRate))
             data_received_cycles += 1
 
     def save_active_data_to_file(self, filename):
-        np.save(filename, self.active_data)
+        np.savetxt(filename, self.active_data, delimiter=',')
 
     # TODO change first argument of Scope to be dynamic based on range we want to see
     def display_data(self, number_of_cycles, static=False):
-        Scope(1 / self.eeg_device.SamplingRate, modal=static)(self.eeg_device.GetData(self.eeg_device.SamplingRate))
+        Scope(number_of_cycles / self.eeg_device.SamplingRate, modal=static)(self.eeg_device.GetData(self.eeg_device.SamplingRate))
         plt.show()
 
     def print_all_device_info(self):

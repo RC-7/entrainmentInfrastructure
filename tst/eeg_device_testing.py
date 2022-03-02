@@ -26,7 +26,7 @@ def main():
             gtec_device.get_data(int(number_of_cycles))
             gtec_device.save_active_data_to_file(filename)
         elif user_input == 'display':
-            gtec_device.display_data()
+            gtec_device.display_data(1)
 
     gtec_device.close_device()
 
