@@ -4,7 +4,7 @@ import numpy as np
 import h5py
 from scipy import signal
 from scipy.signal import freqz
-
+from math import sqrt, floor, ceil
 from numpy.fft import fft
 
 
@@ -101,17 +101,40 @@ def do_some_csv_analysis():
     # plt.show()
 
 
-def plot_same_axis(eeg_data, electrodes_to_plot, np_slice_indexes, built_filter=None):
+def plot_same_axis(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True, built_filter=None):
     fig, ax = plt.subplots()
     x_val = create_x_values(eeg_data[np_slice_indexes[0]])
+    row = 0
+    column = 0
+    active_row = 0
+    active_column = 0
+    if not same_axis:
+        sqrt_plots = sqrt(len(electrodes_to_plot))
+        row = ceil(sqrt_plots)
+        column = ceil(sqrt_plots)
+        fig, ax = plt.subplots(row, column)
+    else:
+        fig, ax = plt.subplots()
     for i in electrodes_to_plot:
         # print((eeg_data[250:521, 1]))
         if built_filter is None:
             data_to_plot = eeg_data[np_slice_indexes[i]]
         else:
             data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
-        plt.plot(x_val, data_to_plot, label=str(i))
-    ax.legend()
+        if not same_axis:
+            ax[active_row, active_column].plot(x_val, data_to_plot, label=str(i))
+            active_column += 1
+            if active_column == column:
+                active_row += 1
+                active_column = 0
+        else:
+            plt.plot(x_val, data_to_plot, label=str(i))
+    if same_axis:
+        ax.legend()
+    else:
+        if active_column < column:
+            for j in range(active_column, column):
+                fig.delaxes(ax[active_row, j])
     plt.show()
 
 
@@ -129,7 +152,7 @@ def do_some_hdfs5_analysis():
 
     [b, a] = butter_highpass(0.00000001, 521, order=5)
     # view_filter(b, a, 521)
-    plot_same_axis(eeg_data, electrodes_to_plot, index_dict, [b, a])
+    plot_same_axis(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
 
 
 def main():
