@@ -4,7 +4,7 @@ import numpy as np
 import h5py
 from scipy import signal
 from scipy.signal import freqz
-from math import sqrt, floor, ceil
+from math import sqrt, ceil
 from numpy.fft import fft
 
 plt.autoscale(True)
@@ -16,7 +16,6 @@ def get_data_csv(filename):
 
 def get_fft(data, sampling_rate):
     fft_data = fft(data)
-    # plt.savefig('tstcvs_test_bas')
     N = len(fft_data)
     n = np.arange(N)
     T = N / sampling_rate
@@ -39,6 +38,7 @@ def butter_highpass(cutoff, fs, order=10):
     return b, a
 
 
+# Plots the frequency response of the filter built
 def view_filter(b, a, fs):
     w, h = freqz(b, a, worN=50)
     plt.plot((fs * 0.5 / np.pi) * w, abs(h))
@@ -52,7 +52,6 @@ def view_filter(b, a, fs):
 def butter_highpass_filter(data, cutoff=0.001, fs=521, existing_filter=None, order=5):
     if existing_filter is None:
         b, a = butter_highpass(cutoff, fs, order=order)
-        # view_filter(b, a, 521)
     else:
         b = existing_filter[0]
         a = existing_filter[1]
@@ -60,37 +59,27 @@ def butter_highpass_filter(data, cutoff=0.001, fs=521, existing_filter=None, ord
     return y
 
 
-# TODO MASSIVE overhaul
-def do_some_csv_analysis():
-    eeg_data = get_data_csv('custom_suite/test_short_email_fixed.csv')
-
-    electrodes_to_plot = [0, 3, 20, 22, 30, 32]
-    index_dict = {}
-    for i in electrodes_to_plot:
-        index_dict[i] = np.index_exp[250:500, i]
-
-    [b, a] = butter_highpass(0.00000001, 521, order=5)
-    plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
-
-    plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=50, same_axis=False)
-
+def get_subplot_dimentions(electrodes_to_plot):
+    row = 0
+    column = 0
+    if np.abs((len(electrodes_to_plot) / 2) - 2) > 2:
+        sqrt_plots = sqrt(len(electrodes_to_plot))
+        row = ceil(sqrt_plots)
+        column = ceil(sqrt_plots)
+    else:
+        row = 2
+        column = ceil(len(electrodes_to_plot) / 2)
+    return [row, column]
 
 def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True, built_filter=None,
-                   save=False, filename=''):
-    fig, ax = plt.subplots()
+                  save=False, filename=''):
     x_val = create_x_values(eeg_data[np_slice_indexes[0]])
     row = 0
     column = 0
     active_row = 0
     active_column = 0
     if not same_axis:
-        if np.abs((len(electrodes_to_plot)/2) - 2) > 2:
-            sqrt_plots = sqrt(len(electrodes_to_plot))
-            row = ceil(sqrt_plots)
-            column = ceil(sqrt_plots)
-        else:
-            row = 2
-            column = ceil(len(electrodes_to_plot)/2)
+        [row, column] = get_subplot_dimentions(electrodes_to_plot)
         fig, ax = plt.subplots(row, column)
     else:
         fig, ax = plt.subplots()
@@ -127,15 +116,9 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
     active_row = 0
     active_column = 0
     if not same_axis:
-        if np.abs((len(electrodes_to_plot)/2) - 2) > 2:
-            sqrt_plots = sqrt(len(electrodes_to_plot))
-            row = ceil(sqrt_plots)
-            column = ceil(sqrt_plots)
-        else:
-            row = 2
-            column = ceil(len(electrodes_to_plot)/2)
+        [row, column] = get_subplot_dimentions(electrodes_to_plot)
         fig, ax = plt.subplots(row, column)
-        fig.tight_layout(pad=1.5) #edit me when axis labels are added
+        fig.tight_layout(pad=1.5)  # edit me when axis labels are added
     for i in electrodes_to_plot:
         data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
         [fft_data, freq] = get_fft(data_to_plot, 521)
@@ -160,10 +143,22 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
         plt.savefig(filename)
 
 
+def do_some_csv_analysis():
+    eeg_data = get_data_csv('custom_suite/test_short_email_fixed.csv')
+    electrodes_to_plot = [0, 3, 20, 22, 30, 32]
+    index_dict = {}
+    for i in electrodes_to_plot:
+        index_dict[i] = np.index_exp[250:500, i]
+
+    [b, a] = butter_highpass(0.00000001, 521, order=5)
+    plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
+
+    plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=50, same_axis=False)
+
+
 def do_some_hdfs5_analysis():
     filename = 'gtec/run_3.hdf5'
     hf = h5py.File(filename, 'r')
-    # data = hf.get('dataset_name').value  # `data` is now an ndarray.
     tst = hf['RawData']
     tst_samples = tst['Samples']
     eeg_data = tst_samples[()]  # () gets all data
@@ -173,16 +168,6 @@ def do_some_hdfs5_analysis():
         index_dict[i] = np.index_exp[250:1000, i]
 
     [b, a] = butter_highpass(0.00000001, 521, order=5)
-
-
-    # plt.figure(figsize=(12, 6))
-    # plt.subplot(121)
-    # [fft_data, freq] = get_fft(eeg_data[index_dict[6]], 521)
-    # plt.stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
-    # plt.xlabel('Freq (Hz)')
-    # plt.ylabel('FFT Amplitude channel 1 ')
-    # plt.xlim(0, 50)
-    # plt.show()
 
     plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
 
