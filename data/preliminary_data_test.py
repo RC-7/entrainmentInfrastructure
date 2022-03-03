@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import h5py
 from scipy import signal
+from scipy.signal import freqz
 
 from numpy.fft import fft
 
@@ -29,14 +30,30 @@ def create_x_values(data, sampling_speed=521):
     return x_val
 
 
-def butter_highpass(cutoff, fs, order=5):
+def butter_highpass(cutoff, fs, order=10):
     nyq = 0.5 * fs
-    normal_cutoff = cutoff / nyq
-    b, a = signal.butter(N=order, Wn=normal_cutoff, btype="high", analog=False, fs=fs)
+    normal_cutoff = 5 / nyq
+    b, a = signal.butter(N=order, Wn=normal_cutoff, btype="hp", analog=False, fs=fs)
     return b, a
 
-def butter_highpass_filter(data, cutoff, fs, order=5):
-    b, a = butter_highpass(cutoff, fs, order=order)
+
+def view_filter(b, a, fs):
+    w, h = freqz(b, a, worN=50)
+    plt.plot((fs * 0.5 / np.pi) * w, abs(h))
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Gain')
+    plt.grid(True)
+    plt.show()
+    plt.close()
+
+
+def butter_highpass_filter(data, cutoff=0.001, fs=521, existing_filter=None, order=5):
+    if existing_filter is None:
+        b, a = butter_highpass(cutoff, fs, order=order)
+        # view_filter(b, a, 521)
+    else:
+        b = existing_filter[0]
+        a = existing_filter[1]
     y = signal.filtfilt(b, a, data)
     return y
 
@@ -93,12 +110,17 @@ def do_some_hdfs5_analysis():
     eeg_data = tst_samples[()]  # () gets all data
     x_val = create_x_values(eeg_data[250:521, :])
     electrodes_to_plot = [1, 2, 3, 4, 5, 6]
+
+    [b, a] = butter_highpass(0.00000001, 521, order=5)
+    # view_filter(b, a, 521)
     fig, ax = plt.subplots()
     for i in electrodes_to_plot:
-        plt.plot(x_val, eeg_data[250:521, i], label=str(i))
+        # print((eeg_data[250:521, 1]))
+        filtered = butter_highpass_filter(abs(eeg_data[250:521, i]), existing_filter=[b, a])
+        plt.plot(x_val, filtered, label=str(i))
     ax.legend()
     plt.show()
-    print(len(x_val))
+    # print(len(x_val))
 
 
 def main():
