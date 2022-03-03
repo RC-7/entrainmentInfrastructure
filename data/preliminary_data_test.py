@@ -6,6 +6,9 @@ from scipy import signal
 from scipy.signal import freqz
 from math import sqrt, ceil
 from numpy.fft import fft
+import mne
+
+import matplotlib as mpl
 
 plt.autoscale(True)
 
@@ -71,6 +74,7 @@ def get_subplot_dimentions(electrodes_to_plot):
         column = ceil(len(electrodes_to_plot) / 2)
     return [row, column]
 
+
 def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True, built_filter=None,
                   save=False, filename=''):
     x_val = create_x_values(eeg_data[np_slice_indexes[0]])
@@ -96,7 +100,7 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
                 active_row += 1
                 active_column = 0
         else:
-            plt.plot(x_val, data_to_plot, label=str(i))
+            ax.plot(x_val, data_to_plot, label=str(i))
     if same_axis:
         ax.legend()
     else:
@@ -122,7 +126,6 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
     for i in electrodes_to_plot:
         data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
         [fft_data, freq] = get_fft(data_to_plot, 521)
-        print(np.abs(fft_data).max())
         if not same_axis:
             ax[active_row, active_column].stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
             # ax[active_row, active_column].set(xlabel='Freq (Hz)', ylabel='Magnitude', xlim=f_lim)
@@ -141,6 +144,71 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
         plt.show()
     else:
         plt.savefig(filename)
+
+
+def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path):
+    if file_type == 'csv':
+        eeg_data = get_data_csv(file_path)
+        # eeg_data = eeg_data[0:500, :] # Scoping data down, this will not be needed
+    else:
+        filename = 'gtec/run_3.hdf5'
+        hf = h5py.File(filename, 'r')
+        tst = hf['RawData']
+        tst_samples = tst['Samples']
+        eeg_data = tst_samples[()]  # () gets all data
+    # print(len(eeg_data))
+    # print(eeg_data.transpose())
+    ch_types = ['eeg'] * 64
+
+    ch_names = ['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
+                'CP5', 'CP3', 'CP1', 'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz', 'POz', 'Pz', 'CPz',
+                'Fpz', 'Fp2', 'AF8', 'AF4', 'AFz', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
+                'Cz', 'C2', 'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'PO4',
+                'O2']
+
+    info = mne.create_info(ch_names=ch_names, ch_types=ch_types, sfreq=521)  # TODO flesh out with real cap info
+    info.set_montage('standard_1020')  # Will auto set channel names on real cap
+    info['description'] = 'My custom dataset'
+    raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
+    return [raw, info]
+
+
+# TODO fix colour map and add reference uV values to it's description
+def plot_topo_map(raw_data):
+    # Allows for expansion to show time data with map on one figure
+    times = np.arange(0.05, 0.151, 0.02)
+    fig, ax = plt.subplots(ncols=1, figsize=(8, 4), gridspec_kw=dict(top=0.9),
+                           sharex=True, sharey=True)
+    # It is possible to set own thresholds here
+    [a, b] = mne.viz.plot_topomap(raw_data.get_data()[:, 0], raw_data.info, axes=ax,
+                                  show=False, sensors=True, ch_type='eeg')
+    cmap = a.cmap
+    bounds = b.levels
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+    ax.set_title('Topographical map of data', fontweight='bold')
+    cax = fig.add_axes([0.85, 0.031, 0.03, 0.8])  # fix location
+    # cax = plt.axes([0.85, 0.031, 0.03, 0.8])  # fix location
+    plt.colorbar(
+        mpl.cm.ScalarMappable(cmap=cmap, norm=norm),
+        cax=cax,
+        boundaries=[-150] + bounds + [120],  # Adding values for extensions.
+        extend='neither',
+        ticks=bounds,
+        # spacing='proportional',
+        # orientation='horizontal',
+        # label='Discrete intervals, some other units',
+    )
+    plt.show()
+
+
+def plot_sensor_locations(raw_data):
+    fig, ax = plt.subplots(ncols=1, figsize=(8, 4), gridspec_kw=dict(top=0.9),
+                           sharex=True, sharey=True)
+
+    # we plot the channel positions with default sphere - the mne way
+    raw_data.plot_sensors(axes=ax, show=False)
+    ax.set_title('Channel projection', fontweight='bold')
+    plt.show()
 
 
 def do_some_csv_analysis():
@@ -165,18 +233,26 @@ def do_some_hdfs5_analysis():
     electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
     index_dict = {}
     for i in electrodes_to_plot:
-        index_dict[i] = np.index_exp[250:1000, i]
+        index_dict[i] = np.index_exp[200:1000, i]
 
     [b, a] = butter_highpass(0.00000001, 521, order=5)
 
     plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
 
-    plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=50, same_axis=False)
+    plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=20, same_axis=False)
 
 
 def main():
-    do_some_csv_analysis()
+    # do_some_csv_analysis()
     # do_some_hdfs5_analysis()
+    # file_type = 'hdfs5'
+    # file_path = 'gtec/run_3.hdf5'
+    file_type = 'csv'
+    file_path = 'custom_suite/one_minute_half_fixed.csv'
+    electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
+    [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path)
+    # plot_sensor_locations(raw)
+    plot_topo_map(raw)
 
 
 if __name__ == '__main__':
