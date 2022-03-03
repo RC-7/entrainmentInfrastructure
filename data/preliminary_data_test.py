@@ -101,6 +101,20 @@ def do_some_csv_analysis():
     # plt.show()
 
 
+def plot_same_axis(eeg_data, electrodes_to_plot, np_slice_indexes, built_filter=None):
+    fig, ax = plt.subplots()
+    x_val = create_x_values(eeg_data[np_slice_indexes[0]])
+    for i in electrodes_to_plot:
+        # print((eeg_data[250:521, 1]))
+        if built_filter is None:
+            data_to_plot = eeg_data[np_slice_indexes[i]]
+        else:
+            data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
+        plt.plot(x_val, data_to_plot, label=str(i))
+    ax.legend()
+    plt.show()
+
+
 def do_some_hdfs5_analysis():
     filename = 'gtec/run_3.hdf5'
     hf = h5py.File(filename, 'r')
@@ -108,19 +122,14 @@ def do_some_hdfs5_analysis():
     tst = hf['RawData']
     tst_samples = tst['Samples']
     eeg_data = tst_samples[()]  # () gets all data
-    x_val = create_x_values(eeg_data[250:521, :])
-    electrodes_to_plot = [1, 2, 3, 4, 5, 6]
+    electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
+    index_dict = {}
+    for i in electrodes_to_plot:
+        index_dict[i] = np.index_exp[250:521, i]
 
     [b, a] = butter_highpass(0.00000001, 521, order=5)
     # view_filter(b, a, 521)
-    fig, ax = plt.subplots()
-    for i in electrodes_to_plot:
-        # print((eeg_data[250:521, 1]))
-        filtered = butter_highpass_filter(abs(eeg_data[250:521, i]), existing_filter=[b, a])
-        plt.plot(x_val, filtered, label=str(i))
-    ax.legend()
-    plt.show()
-    # print(len(x_val))
+    plot_same_axis(eeg_data, electrodes_to_plot, index_dict, [b, a])
 
 
 def main():
