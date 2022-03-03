@@ -7,6 +7,8 @@ from scipy.signal import freqz
 from math import sqrt, floor, ceil
 from numpy.fft import fft
 
+plt.autoscale(True)
+
 
 def get_data_csv(filename):
     return genfromtxt(filename, delimiter=',')
@@ -61,47 +63,20 @@ def butter_highpass_filter(data, cutoff=0.001, fs=521, existing_filter=None, ord
 # TODO MASSIVE overhaul
 def do_some_csv_analysis():
     eeg_data = get_data_csv('custom_suite/test_short_email_fixed.csv')
-    # print(eeg_data[:, 0])
-
-    data_plotting = eeg_data[0:200, 0]
-    diff = 1 / 521
-
-    x_val = create_x_values(data_plotting)
-
-    fig, ax = plt.subplots()
 
     electrodes_to_plot = [0, 3, 20, 22, 30, 32]
+    index_dict = {}
     for i in electrodes_to_plot:
-        plt.plot(x_val, eeg_data[0:200, i], label=str(i))
+        index_dict[i] = np.index_exp[250:500, i]
 
-    # for i in range(20, 22):
-    #     plt.plot(x_val, eeg_data[250:500, i], label=str(i))
-    #
-    # for i in range(30, 32):
-    #     plt.plot(x_val, eeg_data[250:500, i], label=str(i))
-    ax.legend()
+    [b, a] = butter_highpass(0.00000001, 521, order=5)
+    plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
 
-    plt.show()
-    #
-    # [fft_data, freq] = get_fft(eeg_data[250:500, 0], 521)
-    #
-    # plt.figure(figsize=(12, 6))
-    # plt.subplot(121)
-    #
-    # plt.stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
-    # plt.xlabel('Freq (Hz)')
-    # plt.ylabel('FFT Amplitude channel 1 ')
-    # plt.xlim(0, 35)
-    # [fft_data, freq] = get_fft(eeg_data[250:500, 15], 521)
-    # plt.subplot(122)
-    # plt.stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
-    # plt.xlabel('Freq (Hz)')
-    # plt.ylabel('FFT Amplitude channel 15 ')
-    # plt.xlim(0, 35)
-    # plt.show()
+    plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=50, same_axis=False)
 
 
-def plot_same_axis(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True, built_filter=None):
+def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True, built_filter=None,
+                   save=False, filename=''):
     fig, ax = plt.subplots()
     x_val = create_x_values(eeg_data[np_slice_indexes[0]])
     row = 0
@@ -109,9 +84,13 @@ def plot_same_axis(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=Tru
     active_row = 0
     active_column = 0
     if not same_axis:
-        sqrt_plots = sqrt(len(electrodes_to_plot))
-        row = ceil(sqrt_plots)
-        column = ceil(sqrt_plots)
+        if np.abs((len(electrodes_to_plot)/2) - 2) > 2:
+            sqrt_plots = sqrt(len(electrodes_to_plot))
+            row = ceil(sqrt_plots)
+            column = ceil(sqrt_plots)
+        else:
+            row = 2
+            column = ceil(len(electrodes_to_plot)/2)
         fig, ax = plt.subplots(row, column)
     else:
         fig, ax = plt.subplots()
@@ -132,10 +111,53 @@ def plot_same_axis(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=Tru
     if same_axis:
         ax.legend()
     else:
-        if active_column < column:
+        if active_column != 0:
             for j in range(active_column, column):
                 fig.delaxes(ax[active_row, j])
-    plt.show()
+    if not save:
+        plt.show()
+    else:
+        plt.savefig(filename)
+
+
+def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter, same_axis=True,
+             save=False, filename=''):
+    row = 0
+    column = 0
+    active_row = 0
+    active_column = 0
+    if not same_axis:
+        if np.abs((len(electrodes_to_plot)/2) - 2) > 2:
+            sqrt_plots = sqrt(len(electrodes_to_plot))
+            row = ceil(sqrt_plots)
+            column = ceil(sqrt_plots)
+        else:
+            row = 2
+            column = ceil(len(electrodes_to_plot)/2)
+        fig, ax = plt.subplots(row, column)
+        fig.tight_layout(pad=1.5) #edit me when axis labels are added
+    for i in electrodes_to_plot:
+        data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
+        [fft_data, freq] = get_fft(data_to_plot, 521)
+        print(np.abs(fft_data).max())
+        if not same_axis:
+            ax[active_row, active_column].stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
+            # ax[active_row, active_column].set(xlabel='Freq (Hz)', ylabel='Magnitude', xlim=f_lim)
+            ax[active_row, active_column].set(xlim=[0, f_lim])
+            ax[active_row, active_column].set_title(f'Channel {i} ')
+            # ax[active_row, active_column].xlim(0, f_lim)
+            active_column += 1
+            if active_column == column:
+                active_row += 1
+                active_column = 0
+    if not same_axis:
+        if active_column != 0:
+            for j in range(active_column, column):
+                fig.delaxes(ax[active_row, j])
+    if not save:
+        plt.show()
+    else:
+        plt.savefig(filename)
 
 
 def do_some_hdfs5_analysis():
@@ -148,16 +170,28 @@ def do_some_hdfs5_analysis():
     electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
     index_dict = {}
     for i in electrodes_to_plot:
-        index_dict[i] = np.index_exp[250:521, i]
+        index_dict[i] = np.index_exp[250:1000, i]
 
     [b, a] = butter_highpass(0.00000001, 521, order=5)
-    # view_filter(b, a, 521)
-    plot_same_axis(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
+
+
+    # plt.figure(figsize=(12, 6))
+    # plt.subplot(121)
+    # [fft_data, freq] = get_fft(eeg_data[index_dict[6]], 521)
+    # plt.stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
+    # plt.xlabel('Freq (Hz)')
+    # plt.ylabel('FFT Amplitude channel 1 ')
+    # plt.xlim(0, 50)
+    # plt.show()
+
+    plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
+
+    plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=50, same_axis=False)
 
 
 def main():
-    # do_some_csv_analysis()
-    do_some_hdfs5_analysis()
+    do_some_csv_analysis()
+    # do_some_hdfs5_analysis()
 
 
 if __name__ == '__main__':
