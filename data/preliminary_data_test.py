@@ -62,7 +62,7 @@ def butter_highpass_filter(data, cutoff=0.001, fs=521, existing_filter=None, ord
     return y
 
 
-def get_subplot_dimentions(electrodes_to_plot):
+def get_subplot_dimensions(electrodes_to_plot):
     row = 0
     column = 0
     if np.abs((len(electrodes_to_plot) / 2) - 2) > 2:
@@ -83,7 +83,7 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
     active_row = 0
     active_column = 0
     if not same_axis:
-        [row, column] = get_subplot_dimentions(electrodes_to_plot)
+        [row, column] = get_subplot_dimensions(electrodes_to_plot)
         fig_size = 0.5 * len(electrodes_to_plot)
         fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
         fig.tight_layout(pad=0.8)  # edit me when axis labels are added
@@ -123,7 +123,7 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
     active_row = 0
     active_column = 0
     if not same_axis:
-        [row, column] = get_subplot_dimentions(electrodes_to_plot)
+        [row, column] = get_subplot_dimensions(electrodes_to_plot)
         fig_size = 0.5 * len(electrodes_to_plot)
         fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
         fig.tight_layout(pad=0.5)  # edit me when axis labels are added
