@@ -84,7 +84,9 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
     active_column = 0
     if not same_axis:
         [row, column] = get_subplot_dimentions(electrodes_to_plot)
-        fig, ax = plt.subplots(row, column)
+        fig_size = 0.5 * len(electrodes_to_plot)
+        fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+        fig.tight_layout(pad=0.8)  # edit me when axis labels are added
     else:
         fig, ax = plt.subplots()
     for i in electrodes_to_plot:
@@ -95,6 +97,7 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
             data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
         if not same_axis:
             ax[active_row, active_column].plot(x_val, data_to_plot, label=str(i))
+            ax[active_row, active_column].set_title(f'Channel {i + 1} ')
             active_column += 1
             if active_column == column:
                 active_row += 1
@@ -113,7 +116,7 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
         plt.savefig(filename)
 
 
-def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter, same_axis=True,
+def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter=None, same_axis=True,
              save=False, filename=''):
     row = 0
     column = 0
@@ -121,16 +124,21 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
     active_column = 0
     if not same_axis:
         [row, column] = get_subplot_dimentions(electrodes_to_plot)
-        fig, ax = plt.subplots(row, column)
+        fig_size = 0.5 * len(electrodes_to_plot)
+        fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+        fig.tight_layout(pad=0.5)  # edit me when axis labels are added
         fig.tight_layout(pad=1.5)  # edit me when axis labels are added
     for i in electrodes_to_plot:
-        data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
+        if built_filter is None:
+            data_to_plot = eeg_data[np_slice_indexes[i]]
+        else:
+            data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
         [fft_data, freq] = get_fft(data_to_plot, 521)
         if not same_axis:
             ax[active_row, active_column].stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
             # ax[active_row, active_column].set(xlabel='Freq (Hz)', ylabel='Magnitude', xlim=f_lim)
             ax[active_row, active_column].set(xlim=[0, f_lim])
-            ax[active_row, active_column].set_title(f'Channel {i} ')
+            ax[active_row, active_column].set_title(f'Channel {i+1} ')
             # ax[active_row, active_column].xlim(0, f_lim)
             active_column += 1
             if active_column == column:
@@ -146,10 +154,30 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
         plt.savefig(filename)
 
 
-def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path):
+def get_data_from_filter_obscured(full_eeg_data):
+    index_low = 771
+    index_high = 1021
+    scoped_data = full_eeg_data[250:521, :]
+    while index_high < len(full_eeg_data):
+        index = np.index_exp[index_low:index_high, :]
+        scoped_data = np.append(scoped_data, full_eeg_data[index], axis=0)
+        index_low += 521
+        index_high += 521
+    return scoped_data
+
+
+def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_data=False, filter_data=False):
     if file_type == 'csv':
-        eeg_data = get_data_csv(file_path)
-        # eeg_data = eeg_data[0:500, :] # Scoping data down, this will not be needed
+        full_eeg_data = get_data_csv(file_path)
+        if patch_data:
+            eeg_data = get_data_from_filter_obscured(full_eeg_data)
+        else:
+            eeg_data = full_eeg_data[250:500, :]
+        if filter_data:
+            generated_filter = butter_highpass(0.00000001, 521, order=5)
+            for i in range(64):
+                index = np.index_exp[:, i]
+                eeg_data[index] = butter_highpass_filter(abs(eeg_data[index]), existing_filter=generated_filter)
     else:
         filename = 'gtec/run_3.hdf5'
         hf = h5py.File(filename, 'r')
@@ -211,17 +239,23 @@ def plot_sensor_locations(raw_data):
     plt.show()
 
 
-def do_some_csv_analysis():
-    eeg_data = get_data_csv('custom_suite/test_short_email_fixed.csv')
-    electrodes_to_plot = [0, 3, 20, 22, 30, 32]
+def do_some_csv_analysis(patch=False):
+    full_eeg_data = get_data_csv('custom_suite/one_minute_half_fixed.csv')
+    # electrodes_to_plot = [0, 3, 20, 22, 30, 32]
+    electrodes_to_plot = [x for x in range(64)]
     index_dict = {}
     for i in electrodes_to_plot:
-        index_dict[i] = np.index_exp[250:500, i]
-
+        index_dict[i] = np.index_exp[:, i]
+    if patch:
+        eeg_data = get_data_from_filter_obscured(full_eeg_data)
+    else:
+        eeg_data = full_eeg_data
     [b, a] = butter_highpass(0.00000001, 521, order=5)
-    plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
+    # plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
+    # Hardware filtering does this for us!
+    plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=False)
 
-    plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=50, same_axis=False)
+    plot_fft(eeg_data, electrodes_to_plot, index_dict, f_lim=50, same_axis=False)
 
 
 def do_some_hdfs5_analysis():
@@ -243,16 +277,22 @@ def do_some_hdfs5_analysis():
 
 
 def main():
-    # do_some_csv_analysis()
+    do_some_csv_analysis(patch=True)
+
     # do_some_hdfs5_analysis()
     # file_type = 'hdfs5'
     # file_path = 'gtec/run_3.hdf5'
-    file_type = 'csv'
-    file_path = 'custom_suite/one_minute_half_fixed.csv'
-    electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
-    [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path)
-    # plot_sensor_locations(raw)
-    plot_topo_map(raw)
+
+    #################################
+    ############## mne ##############
+    #################################
+    # file_type = 'csv'
+    # file_path = 'custom_suite/one_minute_half_fixed.csv'
+    # electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
+    # [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path,
+    #                                          patch_data=True, filter_data=True)
+    # # plot_sensor_locations(raw)
+    # plot_topo_map(raw)
 
 
 if __name__ == '__main__':
