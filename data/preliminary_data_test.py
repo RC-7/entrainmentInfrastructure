@@ -36,7 +36,7 @@ def create_x_values(data, sampling_speed=521):
 
 def butter_highpass(cutoff, fs, order=10):
     nyq = 0.5 * fs
-    normal_cutoff = 5 / nyq
+    normal_cutoff = cutoff / nyq
     b, a = signal.butter(N=order, Wn=normal_cutoff, btype="hp", analog=False, fs=fs)
     return b, a
 
@@ -138,7 +138,7 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
             ax[active_row, active_column].stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
             # ax[active_row, active_column].set(xlabel='Freq (Hz)', ylabel='Magnitude', xlim=f_lim)
             ax[active_row, active_column].set(xlim=[0, f_lim])
-            ax[active_row, active_column].set_title(f'Channel {i+1} ')
+            ax[active_row, active_column].set_title(f'Channel {i + 1} ')
             # ax[active_row, active_column].xlim(0, f_lim)
             active_column += 1
             if active_column == column:
@@ -201,6 +201,28 @@ def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_d
     return [raw, info]
 
 
+def get_fft_mne(data):
+    events = mne.find_events(data, stim_channel='STI 014')
+
+
+def clean_mne_data_ica(raw_data):
+    filt_raw = raw_data.copy().filter(l_freq=1., h_freq=None)
+    ica = mne.preprocessing.ICA(n_components=15, max_iter='auto', random_state=97)
+    data = ica.fit(filt_raw)
+    # ica.plot_sources(raw_data, show_scrollbars=True)
+    ica.plot_components()
+    # ica.plot_properties(raw_data, picks=[0, 1])
+    ica.exclude = [6, 11, 13]  # Removing ICA components
+    # removing the components
+    reconstructed_raw = raw_data.copy()
+    ica.apply(reconstructed_raw)
+    # TODO plot the reconstructed data
+
+    # raw_data.plot(show_scrollbars=False)
+    reconstructed_raw.plot(show_scrollbars=False, start=0, duration=10)
+    # ica.plot_sources(reconstructed_raw, show_scrollbars=False)
+
+
 # TODO fix colour map and add reference uV values to it's description
 def plot_topo_map(raw_data):
     # Allows for expansion to show time data with map on one figure
@@ -253,12 +275,14 @@ def do_some_csv_analysis(patch=False):
     [b, a] = butter_highpass(0.00000001, 521, order=5)
     # plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
     # Hardware filtering does this for us!
-    plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=False)
+    plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=False, save=True,
+                  filename='one_min_patch_data.png')
 
-    plot_fft(eeg_data, electrodes_to_plot, index_dict, f_lim=50, same_axis=False)
+    plot_fft(eeg_data, electrodes_to_plot, index_dict, f_lim=50, same_axis=False, save=True,
+             filename='one_min_patch_fft.png')
 
 
-def do_some_hdfs5_analysis():
+def do_some_hdfs5_analysis(filter_data=False):
     filename = 'gtec/run_3.hdf5'
     hf = h5py.File(filename, 'r')
     tst = hf['RawData']
@@ -268,16 +292,16 @@ def do_some_hdfs5_analysis():
     index_dict = {}
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[200:1000, i]
-
-    [b, a] = butter_highpass(0.00000001, 521, order=5)
-
-    plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
-
+    if filter_data:
+        [b, a] = butter_highpass(0.00000001, 521, order=5)
+        plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
+    else:
+        plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=False)
     plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=20, same_axis=False)
 
 
 def main():
-    do_some_csv_analysis(patch=True)
+    # do_some_csv_analysis(patch=True)
 
     # do_some_hdfs5_analysis()
     # file_type = 'hdfs5'
@@ -286,12 +310,15 @@ def main():
     #################################
     ############## mne ##############
     #################################
-    # file_type = 'csv'
-    # file_path = 'custom_suite/one_minute_half_fixed.csv'
-    # electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
-    # [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path,
-    #                                          patch_data=True, filter_data=True)
-    # # plot_sensor_locations(raw)
+    file_type = 'csv'
+    file_path = 'custom_suite/one_minute_half_fixed.csv'
+    electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
+    [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path,
+                                             patch_data=True, filter_data=True)
+
+    clean_mne_data_ica(raw)
+
+    # plot_sensor_locations(raw)
     # plot_topo_map(raw)
 
 
