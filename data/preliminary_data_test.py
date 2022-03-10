@@ -7,10 +7,10 @@ from scipy.signal import freqz
 from math import sqrt, ceil
 from numpy.fft import fft
 import mne
-
 import matplotlib as mpl
 
 plt.autoscale(True)
+SAMPLING_SPEED = 512
 
 
 def get_data_csv(filename):
@@ -26,7 +26,7 @@ def get_fft(data, sampling_rate):
     return [fft_data, freq]
 
 
-def create_x_values(data, sampling_speed=521):
+def create_x_values(data, sampling_speed=SAMPLING_SPEED):
     diff = 1 / sampling_speed
     x_val = []
     for i in range(len(data)):
@@ -52,7 +52,7 @@ def view_filter(b, a, fs):
     plt.close()
 
 
-def butter_highpass_filter(data, cutoff=0.001, fs=521, existing_filter=None, order=5):
+def butter_highpass_filter(data, cutoff=0.001, fs=SAMPLING_SPEED, existing_filter=None, order=5):
     if existing_filter is None:
         b, a = butter_highpass(cutoff, fs, order=order)
     else:
@@ -90,7 +90,7 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
     else:
         fig, ax = plt.subplots()
     for i in electrodes_to_plot:
-        # print((eeg_data[250:521, 1]))
+        # print((eeg_data[250:SAMPLING_SPEED, 1]))
         if built_filter is None:
             data_to_plot = eeg_data[np_slice_indexes[i]]
         else:
@@ -133,7 +133,7 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
             data_to_plot = eeg_data[np_slice_indexes[i]]
         else:
             data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
-        [fft_data, freq] = get_fft(data_to_plot, 521)
+        [fft_data, freq] = get_fft(data_to_plot, SAMPLING_SPEED)
         if not same_axis:
             ax[active_row, active_column].stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
             # ax[active_row, active_column].set(xlabel='Freq (Hz)', ylabel='Magnitude', xlim=f_lim)
@@ -157,7 +157,7 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
 def get_data_from_filter_obscured(full_eeg_data):
     index_low = 771
     index_high = 1021
-    scoped_data = full_eeg_data[250:521, :]
+    scoped_data = full_eeg_data[250:SAMPLING_SPEED, :]
     while index_high < len(full_eeg_data):
         index = np.index_exp[index_low:index_high, :]
         scoped_data = np.append(scoped_data, full_eeg_data[index], axis=0)
@@ -174,7 +174,7 @@ def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_d
         else:
             eeg_data = full_eeg_data[250:500, :]
         if filter_data:
-            generated_filter = butter_highpass(0.00000001, 521, order=5)
+            generated_filter = butter_highpass(0.00000001, SAMPLING_SPEED, order=5)
             for i in range(64):
                 index = np.index_exp[:, i]
                 eeg_data[index] = butter_highpass_filter(abs(eeg_data[index]), existing_filter=generated_filter)
@@ -194,7 +194,7 @@ def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_d
                 'Cz', 'C2', 'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'PO4',
                 'O2']
 
-    info = mne.create_info(ch_names=ch_names, ch_types=ch_types, sfreq=521)  # TODO flesh out with real cap info
+    info = mne.create_info(ch_names=ch_names, ch_types=ch_types, sfreq=SAMPLING_SPEED)  # TODO flesh out with real cap info
     info.set_montage('standard_1020')  # Will auto set channel names on real cap
     info['description'] = 'My custom dataset'
     raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
@@ -272,7 +272,7 @@ def do_some_csv_analysis(patch=False):
         eeg_data = get_data_from_filter_obscured(full_eeg_data)
     else:
         eeg_data = full_eeg_data
-    [b, a] = butter_highpass(0.00000001, 521, order=5)
+    [b, a] = butter_highpass(0.00000001, SAMPLING_SPEED, order=5)
     # plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
     # Hardware filtering does this for us!
     plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=False, save=True,
@@ -293,7 +293,7 @@ def do_some_hdfs5_analysis(filter_data=False):
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[200:1000, i]
     if filter_data:
-        [b, a] = butter_highpass(0.00000001, 521, order=5)
+        [b, a] = butter_highpass(0.00000001, SAMPLING_SPEED, order=5)
         plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
     else:
         plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=False)
