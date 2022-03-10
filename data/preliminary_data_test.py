@@ -194,7 +194,8 @@ def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_d
                 'Cz', 'C2', 'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'PO4',
                 'O2']
 
-    info = mne.create_info(ch_names=ch_names, ch_types=ch_types, sfreq=SAMPLING_SPEED)  # TODO flesh out with real cap info
+    info = mne.create_info(ch_names=ch_names, ch_types=ch_types,
+                           sfreq=SAMPLING_SPEED)  # TODO flesh out with real cap info
     info.set_montage('standard_1020')  # Will auto set channel names on real cap
     info['description'] = 'My custom dataset'
     raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
@@ -206,15 +207,17 @@ def get_fft_mne(data):
 
 
 def clean_mne_data_ica(raw_data):
-    filt_raw = raw_data.copy().filter(l_freq=0.01, h_freq=50)
+    filt_raw = raw_data.copy().filter(l_freq=0.01, h_freq=100)
 
     electrodes_to_plot = [x for x in range(64)]
     index_dict = {}
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
 
-    plot_filtered(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
-                        filename='one_min_patch_data_PostFilter.png')
+    plot_filtered(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=True,
+                  filename='sinTest_post_filter.png')
+    plot_fft(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, f_lim=50, same_axis=False, save=True,
+             filename='sinTest_post_filter_fft.png')
 
     ica = mne.preprocessing.ICA(n_components=25, max_iter='auto', random_state=97)
     data = ica.fit(filt_raw)
@@ -237,8 +240,8 @@ def clean_mne_data_ica(raw_data):
 
     # eeg_data.transpose()
 
-    plot_filtered(data.transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
-                  filename='one_min_patch_data_PostBasicICA.png')
+    # plot_filtered(data.transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
+    #               filename='one_min_patch_data_PostBasicICA.png')
     # ica.plot_properties(raw_data, picks=[0, 1])
     # print('here')
     # ica.plot_sources(raw_data, show_scrollbars=True)
@@ -335,6 +338,7 @@ def main():
     #################################
     file_type = 'csv'
     file_path = 'custom_suite/one_minute_half_fixed.csv'
+    # file_path = 'testData/sinTest.csv'
     electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
     [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path,
                                              patch_data=True, filter_data=False)
