@@ -14,7 +14,7 @@ def main():
         elif user_input == 'impedance':
             impedance = gtec_device.impedance_check()
             print(impedance)
-            with open('filename.txt', 'w') as f:
+            with open('bp_filters.txt', 'w') as f:
                 print(impedance, file=f)
                 print('Type: ')
                 print(type(impedance), file=f)

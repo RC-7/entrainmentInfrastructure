@@ -1,3 +1,4 @@
+import datetime
 import pygds
 import json
 import numpy as np
@@ -6,9 +7,13 @@ from matplotlib import pyplot as plt
 from pygds import Scope
 from pygds import GDSError
 from abstract_classes.abstract_eeg_device_interface import AbstractEEGDeviceInterface
+from csv_file_interface import CSVFileInterface
+from hdfs5_file_interface import HDFS5FileInterface
 
 electrodes_file = open('constants/electrodes.json')
 DEFAULT_ELECTRODES = json.load(electrodes_file)['active_electrodes']
+
+SAMPLING_RATE = 512
 
 
 def create_active_electrode_bool_array(active_electrode_numbers):
@@ -19,52 +24,110 @@ def create_active_electrode_bool_array(active_electrode_numbers):
 
 
 class EEGDeviceInterface(AbstractEEGDeviceInterface):
-    def __init__(self, active_electrodes=DEFAULT_ELECTRODES):
+    def __init__(self, active_electrodes=DEFAULT_ELECTRODES, testing=False):
         self.active_electrodes = create_active_electrode_bool_array(active_electrodes)
         self.eeg_device = pygds.GDS()
-        self.configure()
+        self.configure(testing)
         self.print_all_device_info()
-        self.active_data = np.zeros([1, 80])
+        self.active_data = []
+        self.data_received_cycles = 0
 
-    # TODO expand for other Gtec devices
-    # TODO make dynamic for selecting filters
-    def configure(self):
+    def configure(self, testing):
         self.eeg_device.HoldEnabled = 0
         all_sampling_rates = sorted(self.eeg_device.GetSupportedSamplingRates()[0].items())
         f_s_2 = all_sampling_rates[1]
         self.eeg_device.SamplingRate, self.eeg_device.NumberOfScans = f_s_2
-        # get all applicable filters
-        N = [x for x in self.eeg_device.GetNotchFilters()[0] if x['SamplingRate']
-             == self.eeg_device.SamplingRate]
-        BP = [x for x in self.eeg_device.GetBandpassFilters()[0] if x['SamplingRate']
-              == self.eeg_device.SamplingRate]
-        # Set first filter
+        # get all applicable filters for sampling frequency
+        notch_filters = [x for x in self.eeg_device.GetNotchFilters()[0] if x['SamplingRate']
+                         == self.eeg_device.SamplingRate]
+        bandpass_filters = [x for x in self.eeg_device.GetBandpassFilters()[0] if x['SamplingRate']
+                            == self.eeg_device.SamplingRate]
+        channel_counter = 1
+        if testing:
+            self.eeg_device.InternalSignalGenerator.Enabled = True
+            self.eeg_device.InternalSignalGenerator.Frequency = 10  # 10 Hz signal for testing purposes
         for ch in self.eeg_device.Channels:
-            ch.Acquire = True
-            ch.BipolarChannel = 64
-            ch.NotchFilterIndex = N[0]['NotchFilterIndex']
-            ch.BandpassFilterIndex = BP[27]['BandpassFilterIndex']
+            if channel_counter <= 64:
+                ch.Acquire = True
+                ch.BipolarChannel = 64
+                ch.NotchFilterIndex = notch_filters[0]['NotchFilterIndex']
+                # 'Order': 4 'LowerCutoffFrequency': 0.01, 'UpperCutoffFrequency': 100.0
+                ch.BandpassFilterIndex = bandpass_filters[10]['BandpassFilterIndex']
+                channel_counter += 1
+            else:
+                ch.Acquire = False
         self.eeg_device.SetConfiguration()
 
     def impedance_check(self):
         impedance_values = self.eeg_device.GetImpedance()
         return impedance_values
 
-    def get_data(self, number_of_cycles=1):
-        self.active_data = np.zeros([number_of_cycles*512,80])
-        data_received_cycles = 1
-        self.active_data = self.eeg_device.GetData(self.eeg_device.SamplingRate)
-        while data_received_cycles < number_of_cycles:
-            self.active_data = np.append(self.active_data, self.eeg_device.GetData(self.eeg_device.SamplingRate))
-            data_received_cycles += 1
+    def more(self, samples):
+        if len(self.active_data) == 0:
+            self.active_data = samples
+        else:
+            self.active_data = np.append(self.active_data, self.eeg_device.GetData(self.eeg_device.SamplingRate),
+                                         axis=0)
+        return len(self.active_data) / SAMPLING_RATE < self.data_received_cycles
 
-    def save_active_data_to_file(self, filename):
-        np.savetxt(filename, self.active_data, delimiter=',')
+    def get_scaling(self):
+        scaling = self.eeg_device.GetScaling()
+        print(scaling)
+
+    def set_scaling(self):
+        pass
+
+    def get_data(self, number_of_cycles=1):
+        self.active_data = []
+        self.data_received_cycles = number_of_cycles
+        # Testing increasing first argument
+        data = self.eeg_device.GetData(self.eeg_device.SamplingRate*2, self.more)
+        print('-----------------------------------------')
+        print('------------- Get data test -------------')
+        print(data)
+        print(f'Rows: {len(data)}')
+        print(f'Columns: {len(data[0])}')
+        print('-----------------------------------------')
+
+    def save_active_data_to_csv(self, filename):
+        csv = CSVFileInterface(filename=filename)
+        csv.write_to_file(self.active_data)
+
+    def save_active_data_to_hdfs(self, filename, options, data=None):
+        if data is None:
+            data = self.active_data
+        hdfs5_interface = HDFS5FileInterface(filename)
+        hdfs5_interface.write_to_file(data=data, options=options)
 
     # TODO change first argument of Scope to be dynamic based on range we want to see
     def display_data(self, number_of_cycles, static=False):
-        Scope(number_of_cycles / self.eeg_device.SamplingRate, modal=static)(self.eeg_device.GetData(self.eeg_device.SamplingRate))
+        Scope(number_of_cycles / self.eeg_device.SamplingRate, modal=static)(
+            self.eeg_device.GetData(self.eeg_device.SamplingRate))
         plt.show()
+
+    def save_config_to_dataset(self, filename):
+        config_data = []
+        for c in self.eeg_device.Configs:
+            config_data.append(str(c))
+
+        config_to_write = {
+            'values': config_data,
+            'timestamp': str(datetime.datetime.now(datetime.timezone.utc))}
+
+        options = {
+            'dataset_name': 'config',
+            'keep_alive': False
+        }
+        self.save_active_data_to_hdfs(filename=filename, options=options, data=config_to_write)
+
+    def save_impedance_to_dataset(self, filename):
+        impedance_data = {'values': self.impedance_check(),
+                          'timestamp': str(datetime.datetime.now(datetime.timezone.utc))}
+        options = {
+            'dataset_name': 'impedance',
+            'keep_alive': False
+        }
+        self.save_active_data_to_hdfs(filename=filename, options=options, data=impedance_data)
 
     def print_all_device_info(self):
         print("Testing communication with the devices")
