@@ -89,15 +89,23 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         print(f'Columns: {len(data[0])}')
         print('-----------------------------------------')
 
-    def save_active_data_to_csv(self, filename):
+    def save_data_csv(self, filename, data=None):
+        if data is None:
+            data = self.active_data
         csv = CSVFileInterface(filename=filename)
         csv.write_to_file(self.active_data)
 
-    def save_active_data_to_hdfs(self, filename, options, data=None):
+    def save_data_hdfs(self, filename, options, data=None):
         if data is None:
             data = self.active_data
         hdfs5_interface = HDFS5FileInterface(filename)
         hdfs5_interface.write_to_file(data=data, options=options)
+
+    def save_active_data_to_file(self, filename, options=None, data=None):
+        if 'h5' in filename:
+            self.save_data_hdfs(filename, options, data)
+        elif 'csv' in filename:
+            self.save_data_csv(filename, data)
 
     # TODO change first argument of Scope to be dynamic based on range we want to see
     def display_data(self, number_of_cycles, static=False):
