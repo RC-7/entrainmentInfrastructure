@@ -7,12 +7,13 @@ class AbstractFileInterface(metaclass=ABCMeta):
         self.filename = filename
 
     @abstractmethod
-    def read_file(self, number_of_cycles):
+    def read_file(self):
         pass
 
     @abstractmethod
-    def write_to_file(self, data, options={}):
-        pass
+    def write_to_file(self, data, options):
+        if options is None:
+            options = {}
 
     def set_filename(self, filename):
         self.filename = filename
