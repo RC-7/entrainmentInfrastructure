@@ -9,7 +9,7 @@ from numpy.fft import fft
 import mne
 import matplotlib as mpl
 
-plt.autoscale(True)
+# plt.autoscale(True)
 SAMPLING_SPEED = 512
 
 
@@ -174,10 +174,10 @@ def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_d
         else:
             eeg_data = full_eeg_data[250:500, :]
         if filter_data:
-            generated_filter = butter_highpass(0.00000001, SAMPLING_SPEED, order=5)
+            generated_filter = butter_highpass(0.001, SAMPLING_SPEED, order=5)
             for i in range(64):
                 index = np.index_exp[:, i]
-                eeg_data[index] = butter_highpass_filter(abs(eeg_data[index]), existing_filter=generated_filter)
+                eeg_data[index] = butter_highpass_filter((eeg_data[index]), existing_filter=generated_filter)
     else:
         filename = 'gtec/run_3.hdf5'
         hf = h5py.File(filename, 'r')
@@ -206,21 +206,44 @@ def get_fft_mne(data):
 
 
 def clean_mne_data_ica(raw_data):
-    filt_raw = raw_data.copy().filter(l_freq=1., h_freq=None)
-    ica = mne.preprocessing.ICA(n_components=15, max_iter='auto', random_state=97)
+    filt_raw = raw_data.copy().filter(l_freq=0.01, h_freq=50)
+
+    electrodes_to_plot = [x for x in range(64)]
+    index_dict = {}
+    for i in electrodes_to_plot:
+        index_dict[i] = np.index_exp[:, i]
+
+    plot_filtered(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
+                        filename='one_min_patch_data_PostFilter.png')
+
+    ica = mne.preprocessing.ICA(n_components=25, max_iter='auto', random_state=97)
     data = ica.fit(filt_raw)
     # ica.plot_sources(raw_data, show_scrollbars=True)
-    ica.plot_components()
+    # ica.plot_components()
     # ica.plot_properties(raw_data, picks=[0, 1])
-    ica.exclude = [6, 11, 13]  # Removing ICA components
+    ica.exclude = [0, 7]  # Removing ICA components
     # removing the components
     reconstructed_raw = raw_data.copy()
-    ica.apply(reconstructed_raw)
+    out = ica.apply(reconstructed_raw)
     # TODO plot the reconstructed data
 
     # raw_data.plot(show_scrollbars=False)
-    reconstructed_raw.plot(show_scrollbars=False, start=0, duration=10)
+    # reconstructed_raw.plot(show_scrollbars=True, start=0, duration=1000)
     # ica.plot_sources(reconstructed_raw, show_scrollbars=False)
+
+    data = out.get_data()
+    # print(len(data))
+    # print(len(data[0]))
+
+    # eeg_data.transpose()
+
+    plot_filtered(data.transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
+                  filename='one_min_patch_data_PostBasicICA.png')
+    # ica.plot_properties(raw_data, picks=[0, 1])
+    # print('here')
+    # ica.plot_sources(raw_data, show_scrollbars=True)
+    # ica.plot_sources(reconstructed_raw, show_scrollbars=False)
+    # plt.show()
 
 
 # TODO fix colour map and add reference uV values to it's description
@@ -314,7 +337,7 @@ def main():
     file_path = 'custom_suite/one_minute_half_fixed.csv'
     electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
     [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path,
-                                             patch_data=True, filter_data=True)
+                                             patch_data=True, filter_data=False)
 
     clean_mne_data_ica(raw)
 
