@@ -1,5 +1,5 @@
 from gui import GUI
-from PySide6.QtWidgets import QApplication, QLabel, QHBoxLayout, QPushButton,  QWidget
+from PySide6.QtWidgets import QApplication
 import sys
 
 
