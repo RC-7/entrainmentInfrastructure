@@ -2,6 +2,8 @@ import sys
 from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QApplication, QLabel, QGridLayout, QPushButton, QWidget, QLineEdit
 from aws_messaging_interface import AWSMessagingInterface
+from participantInfo import ParticipantInfo
+from info_window import InfoWindow
 
 
 class GUI(QWidget):
@@ -14,10 +16,18 @@ class GUI(QWidget):
         self.setLayout(self.layout)
         self.active_gui_elements = {}
         self.add_initial_page()
+        self.participant_info = ParticipantInfo()
+        self.info_window = []
 
     def delete_elements(self):
         while (child := self.layout.takeAt(0)) is not None:
             child.widget().deleteLater()
+
+    def display_get_participant_info(self):
+        print('here, get info')
+
+    def display_start_experiment(self):
+        print('lets get going')
 
     def submit_authentication_details(self):
         name = self.active_gui_elements['name'].text()
@@ -41,19 +51,38 @@ class GUI(QWidget):
         }
         self.active_gui_elements['Warn'].setText('')
         request_body_values = dict([(k, v) for k, v in request_body_values.items() if v != ''])
-        [auth_status, response_message] = self.mi.authenticate(request_body_values)
+        # UNCOMMENT ME!!
+        # [auth_status, response_message] = self.mi.authenticate(request_body_values)
+        auth_status = True
+        response_message = {"participant_ID": "", "message": "Participant ID created, check your email for your secret "
+                                                             "code", "group": "C", "session": 1}
+
         if auth_status:
-            # TODO keep experiment going and prompt participant to make sure they don't have a key
-            pass
+            self.info_window = InfoWindow(response_message['message'])
+            self.info_window.setStyleSheet("QLabel { color : green; }")
+            self.info_window.show()
+            # self.active_gui_elements['Warn'].setStyleSheet("QLabel { color : green; }")
+            # self.active_gui_elements['Warn'].setText(response_message['message'])
+            # time.sleep(3)
+            self.participant_info.set_from_auth_response(response_message)
+            self.delete_elements()
+            if self.participant_info.session == 1:
+                self.display_get_participant_info()
+            else:
+                self.display_start_experiment()
         else:
             self.active_gui_elements['Warn'].setText(response_message)
 
     def add_initial_page(self):
-        blurb_label = QLabel(self)
-        blurb_label.setText('Please enter your details below to sign up or sign in to the experiment.\nEnsure that you '
-                            ' enter your secret key if you are returning for the second session.')
-        self.layout.addWidget(blurb_label, 0, 1, 1, 2)
+        blurb = 'Please enter your details below to sign up or sign in to the experiment.\nEnsure that you  enter ' \
+                'your secret key if you are returning for the second session. '
         fields = ('name', 'email', 'key')
+        self.add_generic_field_entry(blurb, fields, self.submit_authentication_details)
+
+    def add_generic_field_entry(self, blurb, fields, onsubmit, tooltip=None):
+        blurb_label = QLabel(self)
+        blurb_label.setText(blurb)
+        self.layout.addWidget(blurb_label, 0, 1, 1, 2)
         counter = 1
         for field in fields:
             label = QLabel(self)
@@ -67,12 +96,13 @@ class GUI(QWidget):
             counter += 1
 
         submit_button = QPushButton("Submit")
-        submit_button.setToolTip('Please ensure that you have submitted your secret key if this is your second session')
-        submit_button.clicked.connect(self.submit_authentication_details)
-        self.layout.addWidget(submit_button, 4, 1)
+        if tooltip is not None:
+            submit_button.setToolTip(tooltip)
+        submit_button.clicked.connect(onsubmit)
+        self.layout.addWidget(submit_button, counter+1, 1)
 
         label_warn = QLabel(self)
         label_warn.setText('')
         label_warn.setStyleSheet("QLabel { color : red; }")
         self.active_gui_elements['Warn'] = label_warn
-        self.layout.addWidget(label_warn, 5, 1, 2, 2)
+        self.layout.addWidget(label_warn, counter+2, 1, 2, 2)

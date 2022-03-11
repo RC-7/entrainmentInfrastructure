@@ -59,14 +59,15 @@ class AWSMessagingInterface(AbstractMessagingInterface):
         return [True, 'Success, message sent']
 
     def authenticate(self, auth_body):
-        api_key = self.aws_resources['authentication_api_key']
-        lambda_url = self.aws_resources['authentication_lambda_url']
+        api_key = self.aws_resources['authentication_api_key']['value']
+        lambda_url = self.aws_resources['authentication_lambda_url']['value']
         header_values = {
             'x-api-key': api_key,
         }
         response = requests.post(lambda_url, headers=header_values, data=json.dumps(auth_body))
-        if response.status_code == '200':
-            return [True, response.text]
+        print(response.text)
+        if response.status_code == 200:
+            return [True, json.loads(response.text)]
         else:
             return [False, response.reason]
 
