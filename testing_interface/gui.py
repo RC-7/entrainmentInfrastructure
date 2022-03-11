@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QGridLayout, QPushButton, QW
 from aws_messaging_interface import AWSMessagingInterface
 from participantInfo import ParticipantInfo
 from info_window import InfoWindow
+from util import get_timestamp
 
 
 class GUI(QWidget):
@@ -22,9 +23,42 @@ class GUI(QWidget):
     def delete_elements(self):
         while (child := self.layout.takeAt(0)) is not None:
             child.widget().deleteLater()
+        self.active_gui_elements = {}
 
     def display_get_participant_info(self):
-        print('here, get info')
+        blurb = 'Please enter your information below. \nThis information is purely used for data analysis and nothing ' \
+                'further. \n Experience refers to how many hours you have played a musical instrument before.'
+        fields = ('sex', 'age', 'experience')
+        self.add_generic_field_entry(blurb, fields, self.submit_participant_data)
+        self.resize(550, 200)
+
+    def submit_participant_data(self):
+        data = {'sex': self.active_gui_elements['sex'].text(), 'age': self.active_gui_elements['age'].text(),
+                'experience': self.active_gui_elements['experience'].text()}
+        missing_fields = []
+        for key in data:
+            if data[key] == '':
+                missing_fields.append(key)
+        int_fields = ['age', 'experience']
+        for field in int_fields:
+            if field not in missing_fields:
+                try:
+                    data[field] = int(data[field])
+                except ValueError:
+                    missing_fields.append(field)
+        if len(missing_fields) != 0:
+            warn_message = 'Please enter a valid value for the following: ' + ','.join(missing_fields)
+            self.active_gui_elements['Warn'].setText(warn_message)
+            self.resize(550, 200)
+            return
+        data['participantID'] = self.participant_info.participant_ID
+        data['timestamp'] = get_timestamp()
+        data_type = 'PData'
+        [status, _] = self.mi.send_data(data_type, data)
+        if status:
+            self.participant_info.info = data
+            self.delete_elements()
+            self.display_start_experiment()
 
     def display_start_experiment(self):
         print('lets get going')
@@ -54,7 +88,7 @@ class GUI(QWidget):
         # UNCOMMENT ME!!
         # [auth_status, response_message] = self.mi.authenticate(request_body_values)
         auth_status = True
-        response_message = {"participant_ID": "", "message": "Participant ID created, check your email for your secret "
+        response_message = {"participant_ID": "yes", "message": "Participant ID created, check your email for your secret "
                                                              "code", "group": "C", "session": 1}
 
         if auth_status:
@@ -99,10 +133,10 @@ class GUI(QWidget):
         if tooltip is not None:
             submit_button.setToolTip(tooltip)
         submit_button.clicked.connect(onsubmit)
-        self.layout.addWidget(submit_button, counter+1, 1)
+        self.layout.addWidget(submit_button, counter + 1, 1)
 
         label_warn = QLabel(self)
         label_warn.setText('')
         label_warn.setStyleSheet("QLabel { color : red; }")
         self.active_gui_elements['Warn'] = label_warn
-        self.layout.addWidget(label_warn, counter+2, 1, 2, 2)
+        self.layout.addWidget(label_warn, counter + 2, 1, 2, 2)

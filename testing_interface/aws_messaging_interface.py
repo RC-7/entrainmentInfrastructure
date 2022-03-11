@@ -26,9 +26,9 @@ class AWSMessagingInterface(AbstractMessagingInterface):
             }
         )
 
-    def send_data(self, type_of_data, data, queue='set_score_sqs_url'):
+    def send_data(self, type_of_data, data):
         sqs = boto3.client('sqs', config=self.my_config)
-        queue_url = self.aws_resources['set_score_sqs_url']['value']
+        queue_url = self.aws_resources['set_data_sqs_url']['value']
         data_types = ['Score', 'LevelID', 'PData']
         if type_of_data not in data_types:
             return [False, 'Invalid data type']

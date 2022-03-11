@@ -5,6 +5,7 @@ class ParticipantInfo:
         self.participant_ID = ''
         self.session = ''
         self.group = ''
+        self.info = {}
 
     def set_from_auth_response(self, response):
         self.participant_ID = response['participant_ID']
