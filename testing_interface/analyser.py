@@ -29,7 +29,7 @@ class Analyser:
         return b, a
 
     @staticmethod
-    def filter_data(filter, data):
-        b = filter[0]
-        a = filter[1]
+    def filter_data(existing_filter, data):
+        b = existing_filter[0]
+        a = existing_filter[1]
         return signal.filtfilt(b, a, data)
