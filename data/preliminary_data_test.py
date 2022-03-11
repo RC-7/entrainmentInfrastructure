@@ -180,7 +180,7 @@ def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_d
         if patch_data:  # Completely breaks data, but needed for testing with current ds
             eeg_data = get_data_from_filter_obscured(full_eeg_data)
         else:
-            eeg_data = full_eeg_data    # full_eeg_data[250:500, :] to remove filter data
+            eeg_data = full_eeg_data  # full_eeg_data[250:500, :] to remove filter data
         if filter_data:
             generated_filter = butter_highpass(0.001, SAMPLING_SPEED, order=5)
             for i in range(64):
@@ -241,7 +241,6 @@ def clean_mne_data_ica(raw_data):
     # removing the components
     reconstructed_raw = raw_data.copy()
     out = ica.apply(reconstructed_raw)
-    # TODO plot the reconstructed data
 
     # raw_data.plot(show_scrollbars=False)
     # reconstructed_raw.plot(show_scrollbars=True, start=0, duration=1000)
