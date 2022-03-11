@@ -9,7 +9,7 @@ N = 512 * 3
 ix = np.arange(N)
 ix = ix / 512
 # print(ix)
-signal1 = np.sin(2 * np.pi * ix * 20)
+signal1 = 3*np.sin(2 * np.pi * ix * 20)
 #
 signal2 = np.sin(2 * np.pi * ix * 35)
 
@@ -70,7 +70,8 @@ for band in eeg_bands:
 df = pd.DataFrame(columns=['band', 'val'])
 df['band'] = eeg_bands.keys()
 df['val'] = [eeg_band_fft[band] for band in eeg_bands]
-ax = df.plot.bar(x='band', y='val', legend=False)
+my_colors = [(0.50, x/4.0, x/5.0) for x in range(len(df))]
+ax = df.plot.bar(x='band', y='val', legend=False, color=my_colors)
 ax.set_xlabel("EEG band")
 ax.set_ylabel("Maximum band Amplitude")
 plt.show()
