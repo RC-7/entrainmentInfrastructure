@@ -34,12 +34,16 @@ def create_x_values(data, sampling_speed=SAMPLING_SPEED):
     return x_val
 
 
-def butter_highpass(cutoff, fs, order=10):
+def butter_highpass(cutoff, fs, order=4):
     nyq = 0.5 * fs
     normal_cutoff = cutoff / nyq
     b, a = signal.butter(N=order, Wn=normal_cutoff, btype="hp", analog=False, fs=fs)
     return b, a
 
+
+def butter_bandpass(cutoff_low, cutoff_high, fs, order=4):
+    b, a = signal.butter(order, [cutoff_low, cutoff_high], fs=fs, btype='band')
+    return b, a
 
 # Plots the frequency response of the filter built
 def view_filter(b, a, fs):
@@ -50,6 +54,10 @@ def view_filter(b, a, fs):
     plt.grid(True)
     plt.show()
     plt.close()
+
+
+def get_events(mne_raw_data):
+    return mne.find_events(mne_raw_data)
 
 
 def butter_highpass_filter(data, cutoff=0.001, fs=SAMPLING_SPEED, existing_filter=None, order=5):
@@ -169,10 +177,10 @@ def get_data_from_filter_obscured(full_eeg_data):
 def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_data=False, filter_data=False):
     if file_type == 'csv':
         full_eeg_data = get_data_csv(file_path)
-        if patch_data:
+        if patch_data:  # Completely breaks data, but needed for testing with current ds
             eeg_data = get_data_from_filter_obscured(full_eeg_data)
         else:
-            eeg_data = full_eeg_data[250:500, :]
+            eeg_data = full_eeg_data    # full_eeg_data[250:500, :] to remove filter data
         if filter_data:
             generated_filter = butter_highpass(0.001, SAMPLING_SPEED, order=5)
             for i in range(64):
@@ -207,16 +215,21 @@ def get_fft_mne(data):
 
 
 def clean_mne_data_ica(raw_data):
-    filt_raw = raw_data.copy().filter(l_freq=0.01, h_freq=100)
-
     electrodes_to_plot = [x for x in range(64)]
     index_dict = {}
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
 
+    plot_filtered(raw_data.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=True,
+                  filename='sinTest_pre_filter.png')
+    plot_fft(raw_data.get_data().transpose(), electrodes_to_plot, index_dict, f_lim=100, same_axis=False, save=True,
+             filename='sinTest_pre_filter_fft.png')
+
+    filt_raw = raw_data.copy().filter(l_freq=0.01, h_freq=100)
+
     plot_filtered(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=True,
                   filename='sinTest_post_filter.png')
-    plot_fft(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, f_lim=50, same_axis=False, save=True,
+    plot_fft(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, f_lim=100, same_axis=False, save=True,
              filename='sinTest_post_filter_fft.png')
 
     ica = mne.preprocessing.ICA(n_components=25, max_iter='auto', random_state=97)
@@ -337,11 +350,11 @@ def main():
     ############## mne ##############
     #################################
     file_type = 'csv'
-    file_path = 'custom_suite/one_minute_half_fixed.csv'
-    # file_path = 'testData/sinTest.csv'
+    # file_path = 'custom_suite/one_minute_half_fixed.csv'
+    file_path = 'testData/sinTest.csv'
     electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
     [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path,
-                                             patch_data=True, filter_data=False)
+                                             patch_data=False, filter_data=False)
 
     clean_mne_data_ica(raw)
 
