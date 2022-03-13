@@ -23,8 +23,7 @@ def main():
             filename = input()
             print("Enter the number of cycles to run")
             number_of_cycles = input()
-            gtec_device.get_data(int(number_of_cycles))
-            gtec_device.save_active_data_to_file(filename)
+            gtec_device.get_data(int(number_of_cycles), True, filename)
         elif user_input == 'display':
             gtec_device.display_data(1)
 
