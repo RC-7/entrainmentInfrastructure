@@ -136,6 +136,9 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
         fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
         fig.tight_layout(pad=0.5)  # edit me when axis labels are added
         fig.tight_layout(pad=1.5)  # edit me when axis labels are added
+    else:
+        fig, ax = plt.subplots()
+        ax.set(xlim=[-0.01, 105])
     for i in electrodes_to_plot:
         if built_filter is None:
             data_to_plot = eeg_data[np_slice_indexes[i]]
@@ -152,6 +155,8 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
             if active_column == column:
                 active_row += 1
                 active_column = 0
+        else:
+            ax.stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b", label=str(i))
     if not same_axis:
         if active_column != 0:
             for j in range(active_column, column):
@@ -345,9 +350,9 @@ def do_some_hdfs5_analysis(filename, source='custom', filter_data=False, saved_i
         plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
         plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=20, same_axis=False)
     else:
-        plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=False, save=True,
+        plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=True, save=True,
                       filename=f'{saved_image}_EEG_Raw.png')
-        plot_fft(eeg_data, electrodes_to_plot, index_dict, f_lim=20, same_axis=False, save=True,
+        plot_fft(eeg_data, electrodes_to_plot, index_dict, f_lim=20, same_axis=True, save=True,
                  filename=f'{saved_image}_EEG_FT.png')
 
 
@@ -355,7 +360,7 @@ def main():
     # do_some_csv_analysis(patch=True)
     filename = 'gtec/run_3.hdf5'
     saved_image = 'run_3'
-    do_some_hdfs5_analysis(filename, source='custom')
+    do_some_hdfs5_analysis(filename, source='custom', saved_image=saved_image)
     # file_type = 'hdfs5'
     # file_path = 'gtec/run_3.hdf5'
 
