@@ -320,42 +320,56 @@ def do_some_csv_analysis(patch=False):
              filename='one_min_patch_fft.png')
 
 
-def do_some_hdfs5_analysis(filter_data=False):
-    filename = 'gtec/run_3.hdf5'
+def do_some_hdfs5_analysis(filename, source='custom', filter_data=False, saved_image=''):
     hf = h5py.File(filename, 'r')
-    tst = hf['RawData']
-    tst_samples = tst['Samples']
-    eeg_data = tst_samples[()]  # () gets all data
-    electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
+    if source == 'custom':
+        samples = hf['raw_data']
+        eeg_data = samples[()]  # () gets all data
+    else:
+        tst = hf['RawData']
+        tst_samples = tst['Samples']
+        eeg_data = tst_samples[()]  # () gets all data
+    # electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
+    print('----------------------------------------------------')
+    print('----------- EEG Data dimensions --------------------')
+    print(f'Rows: {len(eeg_data)}')
+    print(f'Columns: {len(eeg_data[0])}')
+    print('----------------------------------------------------')
+    electrodes_to_plot = [x for x in range(64)]
     index_dict = {}
     for i in electrodes_to_plot:
-        index_dict[i] = np.index_exp[200:1000, i]
+        index_dict[i] = np.index_exp[:, i]
+        # index_dict[i] = np.index_exp[200:1000, i] # Swap me if you want to remove filter data
     if filter_data:
         [b, a] = butter_highpass(0.00000001, SAMPLING_SPEED, order=5)
         plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
+        plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=20, same_axis=False)
     else:
-        plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=False)
-    plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=20, same_axis=False)
+        plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=False, save=True,
+                      filename=f'{saved_image}_EEG_Raw.png')
+        plot_fft(eeg_data, electrodes_to_plot, index_dict, f_lim=20, same_axis=False, save=True,
+                 filename=f'{saved_image}_EEG_FT.png')
 
 
 def main():
     # do_some_csv_analysis(patch=True)
-
-    # do_some_hdfs5_analysis()
+    filename = 'gtec/run_3.hdf5'
+    saved_image = 'run_3'
+    do_some_hdfs5_analysis(filename, source='custom')
     # file_type = 'hdfs5'
     # file_path = 'gtec/run_3.hdf5'
 
     #################################
     ############## mne ##############
     #################################
-    file_type = 'csv'
-    # file_path = 'custom_suite/one_minute_half_fixed.csv'
-    file_path = 'testData/sinTest.csv'
-    electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
-    [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path,
-                                             patch_data=False, filter_data=False)
+    # file_type = 'csv'
+    # # file_path = 'custom_suite/one_minute_half_fixed.csv'
+    # file_path = 'testData/sinTest.csv'
+    # electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
+    # [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path,
+    #                                          patch_data=False, filter_data=False)
 
-    clean_mne_data_ica(raw)
+    # clean_mne_data_ica(raw)
 
     # plot_sensor_locations(raw)
     # plot_topo_map(raw)
