@@ -14,6 +14,9 @@ electrodes_file = open('constants/electrodes.json')
 DEFAULT_ELECTRODES = json.load(electrodes_file)['active_electrodes']
 
 SAMPLING_RATE = 512
+# Two minutes of samples
+INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 61440
+INTERMEDIATE_SECOND_WRITE_THRESHOLD = 120
 
 
 def create_active_electrode_bool_array(active_electrode_numbers):
@@ -28,9 +31,12 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.active_electrodes = create_active_electrode_bool_array(active_electrodes)
         self.eeg_device = pygds.GDS()
         self.configure(testing)
-        self.print_all_device_info()
+        # self.print_all_device_info()
         self.active_data = []
         self.data_received_cycles = 0
+        self.save_intermediate_data = False
+        self.filename = ''
+        self.hdfs5_interface = HDFS5FileInterface(self.filename)
 
     def configure(self, testing):
         self.eeg_device.HoldEnabled = 0
@@ -63,11 +69,27 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         return impedance_values
 
     def more(self, samples):
+        print('-----------------------------------------')
+        print('------------- More test -------------')
+        print(samples)
+        print(f'Rows: {len(samples)}')
+        print(f'Columns: {len(samples[0])}')
+        print('-----------------------------------------')
         if len(self.active_data) == 0:
             self.active_data = samples
         else:
             self.active_data = np.append(self.active_data, self.eeg_device.GetData(self.eeg_device.SamplingRate),
                                          axis=0)
+        # Every Two minutes write data in file to keep active memory low
+        if self.save_intermediate_data and len(self.active_data) > INTERMEDIATE_SAMPLE_WRITE_THRESHOLD:
+            options = {
+                'dataset_name': 'raw_data',
+                'keep_alive': True
+            }
+            self.save_active_data_to_file(self.filename, options=options)
+            self.active_data = []
+            self.data_received_cycles -= INTERMEDIATE_SECOND_WRITE_THRESHOLD
+
         return len(self.active_data) / SAMPLING_RATE < self.data_received_cycles
 
     def get_scaling(self):
@@ -77,29 +99,40 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
     def set_scaling(self):
         pass
 
-    def get_data(self, number_of_cycles=1):
+    def get_data(self, number_of_minutes=1, save_intermediate_data=False, filename=''):
         self.active_data = []
-        self.data_received_cycles = number_of_cycles
-        # Testing increasing first argument
-        data = self.eeg_device.GetData(self.eeg_device.SamplingRate*2, self.more)
+        self.data_received_cycles = number_of_minutes * 60  # Minutes to number of sampling periods
+        # Testing increasing first argument, will get half of a minute's worth of samples
+        data = self.eeg_device.GetData(self.eeg_device.SamplingRate * 30, self.more)
+        self.save_intermediate_data = save_intermediate_data
+        self.filename = filename
         print('-----------------------------------------')
         print('------------- Get data test -------------')
         print(data)
         print(f'Rows: {len(data)}')
         print(f'Columns: {len(data[0])}')
         print('-----------------------------------------')
+        options = {
+            'dataset_name': 'raw_data',
+            'keep_alive': False
+        }
+        self.save_active_data_to_file(self.filename, options=options)
+        self.active_data = []
+        self.save_intermediate_data = False
+        self.filename = ''
 
     def save_data_csv(self, filename, data=None):
         if data is None:
             data = self.active_data
         csv = CSVFileInterface(filename=filename)
-        csv.write_to_file(self.active_data)
+        csv.write_to_file(data)
 
     def save_data_hdfs(self, filename, options, data=None):
         if data is None:
             data = self.active_data
-        hdfs5_interface = HDFS5FileInterface(filename)
-        hdfs5_interface.write_to_file(data=data, options=options)
+        if self.hdfs5_interface.filename != filename:
+            self.hdfs5_interface.set_filename(filename)
+        self.hdfs5_interface.write_to_file(data=data, options=options)
 
     def save_active_data_to_file(self, filename, options=None, data=None):
         if 'h5' in filename:
