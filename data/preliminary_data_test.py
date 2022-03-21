@@ -17,8 +17,8 @@ ch_names = ['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'F
             'A2']
 eeg_bands = {'Delta': (0.5, 4),
              'Theta': (4, 8),
-             'Alpha': (8, 12),
-             'Beta': (12, 30),
+             'Alpha': (8, 13),
+             'Beta': (13, 30),
              'Gamma': (30, 45)}
 
 # plt.autoscale(True)
@@ -204,9 +204,9 @@ def get_binnned_fft(eeg_data):
 
 # TODO Add cleaning / logic here
 def plot_band_changes(eeg_data_mne, tmin_crop, tmax_crop, electrodes_to_plot, np_slice_indexes, save=False,
-                      filename=''):
+                      filename='', only_alpha=False):
     # 10 s FFT windows
-    fft_window = 5
+    fft_window = 10
     current_window_low = tmin_crop
     max_value = 0
     bands = {}
@@ -231,7 +231,10 @@ def plot_band_changes(eeg_data_mne, tmin_crop, tmax_crop, electrodes_to_plot, np
             values = df['val']
             count = 0
             for b in band_names:
-                bands[i][b][current_window_low] = values[count]
+                if b == 'Alpha' and only_alpha:
+                    bands[i][b][current_window_low] = values[count]
+                elif not only_alpha:
+                    bands[i][b][current_window_low] = values[count]
                 count += 1
             if df['val'].max() > max_value:
                 max_value = df['val'].max()
@@ -255,9 +258,10 @@ def plot_band_changes(eeg_data_mne, tmin_crop, tmax_crop, electrodes_to_plot, np
             active_column = 0
     for j in range(active_column, column):
         fig.delaxes(ax[active_row, j])
-    for c in range(column):
-        for r in range(row):
-            ax[r, c].set_ylim([0, max_value])
+    if not only_alpha:
+        for c in range(column):
+            for r in range(row):
+                ax[r, c].set_ylim([0, max_value])
     lines, labels = fig.axes[-1].get_legend_handles_labels()
     fig.legend(lines, labels, loc='lower right')
     if not save:
@@ -332,7 +336,7 @@ def get_data_from_filter_obscured(full_eeg_data):
     return scoped_data
 
 
-def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_data=False, filter_data=False):
+def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_data=False):
     if file_type == 'csv':
         full_eeg_data = get_data_csv(file_path)
         if patch_data:  # Completely breaks data, but needed for testing with current ds
@@ -543,6 +547,10 @@ def view_data(raw_data, tmin_crop=None, tmax_crop=None):
     if tmax_crop is not None and tmin_crop is not None:
         data_to_view.crop(tmin=tmin_crop, tmax=tmax_crop).load_data()
     data_to_view.plot(scalings='auto')
+    print('--------------------------------------------------')
+    print(f'max: {type(data_to_view.get_data().transpose())}')
+    print(f'max: {np.amax(data_to_view.get_data().transpose())}')
+    print(f'min: {np.amin(data_to_view.get_data().transpose())}')
 
 
 def test_mne_clean_and_ref(raw_data, tmin_crop, tmax_crop):
@@ -595,13 +603,13 @@ def test_mne_clean_and_ref(raw_data, tmin_crop, tmax_crop):
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    # ds_name = 'alpha_test'
-    # filename = f'custom_suite/{ds_name}.h5'
+    ds_name = 'alpha_test'
+    filename = f'custom_suite/{ds_name}.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
-    ds_name = 'H_e_c'
+    # ds_name = 'H_e_c'
     # ds_name = 'H_e_blink'
-    filename = f'gtec/{ds_name}.hdf5'
+    # filename = f'gtec/{ds_name}.hdf5'
     # do_some_hdfs5_analysis(filename, source='gtec', saved_image=ds_name)
     # file_type = 'hdfs5'
     # file_path = 'gtec/run_3.hdf5'
@@ -612,14 +620,16 @@ def main():
     file_type = 'hdfs'
     # # file_path = 'custom_suite/one_minute_half_fixed.csv'
     # # file_path = 'testData/sinTest.csv'
-    electrodes_to_plot = [0, 1, 2, 3, 4, 63]
-    [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, filename,
-                                             patch_data=False, filter_data=False)
+    # electrodes_to_plot = [0, 1, 2, 3, 4, 63]
+    [raw, info] = generate_mne_raw_with_info(file_type, filename, patch_data=False, filter_data=False)
     #
-    tmin_crop = 100
-    tmax_crop = 175
+    # tmin_crop = 100
+    # tmax_crop = 175
+
+    tmin_crop = 140
+    tmax_crop = 160
     # tmax_crop = 130
-    # view_data(raw, tmin_crop, tmax_crop)
+    # view_data(raw)
     # test_mne_clean_and_ref(raw, tmin_crop, tmax_crop)
     # clean_mne_data_ica(raw)
 
@@ -628,8 +638,8 @@ def main():
     # raw_data.pick([ch_names[n] for n in range(0, 3)])
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
-    plot_band_changes(raw, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, save=True,
-                      filename='H_e_c_band_change_5s_bin_100-175s')
+    plot_band_changes(raw, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
+                      filename='Alpha_test_band_change_10s_bin_140-160s_OnlyAlpha.png')
     # plot_sensor_locations(raw)
     # plot_topo_map(raw)
 
