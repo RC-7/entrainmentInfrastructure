@@ -15,7 +15,11 @@ ch_names = ['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'F
             'Fpz', 'Fp2', 'AF8', 'AF4', 'AFz', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
             'Cz', 'C2', 'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'A1',
             'A2']
-
+eeg_bands = {'Delta': (0.5, 4),
+             'Theta': (4, 8),
+             'Alpha': (8, 12),
+             'Beta': (12, 30),
+             'Gamma': (30, 45)}
 
 # plt.autoscale(True)
 SAMPLING_SPEED = 512
@@ -181,14 +185,88 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
         plt.savefig(filename)
 
 
+def get_binnned_fft(eeg_data):
+    [fft_data, freq] = get_fft(eeg_data, SAMPLING_SPEED)
+    absolute_fft_values = np.absolute(fft_data)
+    sample_frequencies = np.fft.rfftfreq(len(eeg_data), 1.0 / SAMPLING_SPEED)
+
+    eeg_band_fft = dict()
+    for band in eeg_bands:
+        band_frequency_values = np.where((sample_frequencies >= eeg_bands[band][0]) &
+                                         (sample_frequencies <= eeg_bands[band][1]))[0]
+        eeg_band_fft[band] = np.max(absolute_fft_values[band_frequency_values])
+    df = pd.DataFrame(columns=['band', 'val'])
+    df['band'] = eeg_bands.keys()
+    df['val'] = [eeg_band_fft[band] for band in eeg_bands]
+    # print(df)
+    return df
+
+
+# TODO Add cleaning / logic here
+def plot_band_changes(eeg_data_mne, tmin_crop, tmax_crop, electrodes_to_plot, np_slice_indexes, save=False,
+                      filename=''):
+    # 10 s FFT windows
+    fft_window = 5
+    current_window_low = tmin_crop
+    max_value = 0
+    bands = {}
+    active_row = 0
+    active_column = 0
+    band_names = ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
+    timesteps = []
+    while current_window_low + fft_window <= tmax_crop:
+        timesteps.append(current_window_low)
+        current_window_low += fft_window
+    current_window_low = tmin_crop
+    for i in range(62):
+        bands[i] = pd.DataFrame(index=timesteps, columns=band_names)
+    while current_window_low + fft_window <= tmax_crop:
+        fft_data = eeg_data_mne.copy()
+        fft_data.crop(tmin=current_window_low, tmax=current_window_low + fft_window).load_data()
+        data = fft_data.get_data().transpose()
+        # print(len(data))
+        for i in electrodes_to_plot:
+            data_to_analyse = data[np_slice_indexes[i]]
+            df = get_binnned_fft(data_to_analyse)
+            values = df['val']
+            count = 0
+            for b in band_names:
+                bands[i][b][current_window_low] = values[count]
+                count += 1
+            if df['val'].max() > max_value:
+                max_value = df['val'].max()
+        current_window_low += fft_window
+
+    [row, column] = get_subplot_dimensions(electrodes_to_plot)
+    fig_size = 1 * len(electrodes_to_plot)
+    fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+    fig.tight_layout(pad=0.5)  # edit me when axis labels are added
+    fig.tight_layout(pad=1.5)  # edit me when axis labels are added
+
+    for i in electrodes_to_plot:
+        df = bands[i]
+        my_colors = [(0.50, x / 4.0, x / 5.0) for x in range(len(df))]
+        df.plot(xticks=df.index, y=band_names, legend=False, ax=ax[active_row, active_column])
+        ax[active_row, active_column].set_title(f'Channel {i + 1} ')
+
+        active_column += 1
+        if active_column == column:
+            active_row += 1
+            active_column = 0
+    for j in range(active_column, column):
+        fig.delaxes(ax[active_row, j])
+    for c in range(column):
+        for r in range(row):
+            ax[r, c].set_ylim([0, max_value])
+    lines, labels = fig.axes[-1].get_legend_handles_labels()
+    fig.legend(lines, labels, loc='lower right')
+    if not save:
+        plt.show()
+    else:
+        plt.savefig(filename)
+
 def plot_fft_binned(eeg_data, electrodes_to_plot, np_slice_indexes, built_filter=None, same_axis=True,
                     save=False, filename=''):
-
-    eeg_bands = {'Delta': (0.5, 4),
-                 'Theta': (4, 8),
-                 'Alpha': (8, 12),
-                 'Beta': (12, 30),
-                 'Gamma': (30, 45)}
     row = 0
     column = 0
     active_row = 0
@@ -208,19 +286,9 @@ def plot_fft_binned(eeg_data, electrodes_to_plot, np_slice_indexes, built_filter
             data_to_plot = eeg_data[np_slice_indexes[i]]
         else:
             data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
-        [fft_data, freq] = get_fft(data_to_plot, SAMPLING_SPEED)
 
-        absolute_fft_values = np.absolute(fft_data)
-        sample_frequencies = np.fft.rfftfreq(len(data_to_plot), 1.0 / SAMPLING_SPEED)
+        df = get_binnned_fft(data_to_plot)
 
-        eeg_band_fft = dict()
-        for band in eeg_bands:
-            band_frequency_values = np.where((sample_frequencies >= eeg_bands[band][0]) &
-                                             (sample_frequencies <= eeg_bands[band][1]))[0]
-            eeg_band_fft[band] = np.max(absolute_fft_values[band_frequency_values])
-        df = pd.DataFrame(columns=['band', 'val'])
-        df['band'] = eeg_bands.keys()
-        df['val'] = [eeg_band_fft[band] for band in eeg_bands]
         my_colors = [(0.50, x / 4.0, x / 5.0) for x in range(len(df))]
         if not same_axis:
             if df['val'].max() > max_value:
@@ -470,6 +538,13 @@ def do_some_hdfs5_analysis(filename, source='custom', filter_data=False, saved_i
         #                 filename=f'{saved_image}_EEG_FT_BINNED.png')
 
 
+def view_data(raw_data, tmin_crop=None, tmax_crop=None):
+    data_to_view = raw_data.copy()
+    if tmax_crop is not None and tmin_crop is not None:
+        data_to_view.crop(tmin=tmin_crop, tmax=tmax_crop).load_data()
+    data_to_view.plot(scalings='auto')
+
+
 def test_mne_clean_and_ref(raw_data, tmin_crop, tmax_crop):
     # Not plotting for reference electrodes
     electrodes_to_plot = [x for x in range(62)]
@@ -541,11 +616,20 @@ def main():
     [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, filename,
                                              patch_data=False, filter_data=False)
     #
-    tmin_crop = 72
-    tmax_crop = 76
-    test_mne_clean_and_ref(raw, tmin_crop, tmax_crop)
+    tmin_crop = 100
+    tmax_crop = 175
+    # tmax_crop = 130
+    # view_data(raw, tmin_crop, tmax_crop)
+    # test_mne_clean_and_ref(raw, tmin_crop, tmax_crop)
     # clean_mne_data_ica(raw)
 
+    electrodes_to_plot = [x for x in range(62)]
+    index_dict = {}
+    # raw_data.pick([ch_names[n] for n in range(0, 3)])
+    for i in electrodes_to_plot:
+        index_dict[i] = np.index_exp[:, i]
+    plot_band_changes(raw, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, save=True,
+                      filename='H_e_c_band_change_5s_bin_100-175s')
     # plot_sensor_locations(raw)
     # plot_topo_map(raw)
 

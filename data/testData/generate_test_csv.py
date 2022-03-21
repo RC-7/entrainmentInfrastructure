@@ -50,28 +50,28 @@ ax.stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
 ax.set(xlim=[0, 105])
 plt.show()
 
-eeg_bands = {'Delta': (0, 4),
-             'Theta': (4, 8),
-             'Alpha': (8, 12),
-             'Beta': (12, 30),
-             'Gamma': (30, 45)}
-
-absolute_fft_values = np.absolute(fft_data)
-
-sample_frequencies = np.fft.rfftfreq(len(compound_signal), 1.0 / fs)
-
-eeg_band_fft = dict()
-for band in eeg_bands:
-    band_frequency_values = np.where((sample_frequencies >= eeg_bands[band][0]) &
-                                     (sample_frequencies <= eeg_bands[band][1]))[0]
-    eeg_band_fft[band] = np.max(absolute_fft_values[band_frequency_values])  # np.mean gives a skewed perception here
-
-
-df = pd.DataFrame(columns=['band', 'val'])
-df['band'] = eeg_bands.keys()
-df['val'] = [eeg_band_fft[band] for band in eeg_bands]
-my_colors = [(0.50, x/4.0, x/5.0) for x in range(len(df))]
-ax = df.plot.bar(x='band', y='val', legend=False, color=my_colors)
-ax.set_xlabel("EEG band")
-ax.set_ylabel("Maximum band Amplitude")
-plt.show()
+# eeg_bands = {'Delta': (0, 4),
+#              'Theta': (4, 8),
+#              'Alpha': (8, 12),
+#              'Beta': (12, 30),
+#              'Gamma': (30, 45)}
+#
+# absolute_fft_values = np.absolute(fft_data)
+#
+# sample_frequencies = np.fft.rfftfreq(len(compound_signal), 1.0 / fs)
+#
+# eeg_band_fft = dict()
+# for band in eeg_bands:
+#     band_frequency_values = np.where((sample_frequencies >= eeg_bands[band][0]) &
+#                                      (sample_frequencies <= eeg_bands[band][1]))[0]
+#     eeg_band_fft[band] = np.max(absolute_fft_values[band_frequency_values])  # np.mean gives a skewed perception here
+#
+#
+# df = pd.DataFrame(columns=['band', 'val'])
+# df['band'] = eeg_bands.keys()
+# df['val'] = [eeg_band_fft[band] for band in eeg_bands]
+# my_colors = [(0.50, x/4.0, x/5.0) for x in range(len(df))]
+# ax = df.plot.bar(x='band', y='val', legend=False, color=my_colors)
+# ax.set_xlabel("EEG band")
+# ax.set_ylabel("Maximum band Amplitude")
+# plt.show()
