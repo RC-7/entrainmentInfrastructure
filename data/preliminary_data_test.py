@@ -8,6 +8,14 @@ from math import sqrt, ceil
 from numpy.fft import fft
 import mne
 import matplotlib as mpl
+import pandas as pd
+
+ch_names = ['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
+            'CP5', 'CP3', 'CP1', 'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz', 'POz', 'Pz', 'CPz',
+            'Fpz', 'Fp2', 'AF8', 'AF4', 'AFz', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
+            'Cz', 'C2', 'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'A1',
+            'A2']
+
 
 # plt.autoscale(True)
 SAMPLING_SPEED = 512
@@ -44,6 +52,7 @@ def butter_highpass(cutoff, fs, order=4):
 def butter_bandpass(cutoff_low, cutoff_high, fs, order=4):
     b, a = signal.butter(order, [cutoff_low, cutoff_high], fs=fs, btype='band')
     return b, a
+
 
 # Plots the frequency response of the filter built
 def view_filter(b, a, fs):
@@ -90,9 +99,12 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
     column = 0
     active_row = 0
     active_column = 0
+    # electrodes_to_plot = [0, 1, 3, 62, 63]
+
+    # electrodes_to_plot = [1, 62, 63]
     if not same_axis:
         [row, column] = get_subplot_dimensions(electrodes_to_plot)
-        fig_size = 0.5 * len(electrodes_to_plot)
+        fig_size = 1 * len(electrodes_to_plot)
         fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
         fig.tight_layout(pad=0.8)  # edit me when axis labels are added
     else:
@@ -111,7 +123,7 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
                 active_row += 1
                 active_column = 0
         else:
-            ax.plot(x_val, data_to_plot, label=str(i))
+            ax.plot(x_val, data_to_plot, label=str(i+1))
     if same_axis:
         ax.legend()
     else:
@@ -126,19 +138,21 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
 
 def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter=None, same_axis=True,
              save=False, filename=''):
+    # electrodes_to_plot = [0, 1, 2, 63]
+    # electrodes_to_plot = [0, 1, 3]
     row = 0
     column = 0
     active_row = 0
     active_column = 0
     if not same_axis:
         [row, column] = get_subplot_dimensions(electrodes_to_plot)
-        fig_size = 0.5 * len(electrodes_to_plot)
+        fig_size = 1 * len(electrodes_to_plot)
         fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
         fig.tight_layout(pad=0.5)  # edit me when axis labels are added
         fig.tight_layout(pad=1.5)  # edit me when axis labels are added
     else:
         fig, ax = plt.subplots()
-        ax.set(xlim=[-0.01, 105])
+        ax.set(xlim=[-0.01, f_lim])
     for i in electrodes_to_plot:
         if built_filter is None:
             data_to_plot = eeg_data[np_slice_indexes[i]]
@@ -148,7 +162,7 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
         if not same_axis:
             ax[active_row, active_column].stem(freq, np.abs(fft_data), 'b', markerfmt=" ", basefmt="-b")
             # ax[active_row, active_column].set(xlabel='Freq (Hz)', ylabel='Magnitude', xlim=f_lim)
-            ax[active_row, active_column].set(xlim=[0, f_lim])
+            ax[active_row, active_column].set(xlim=[-5, f_lim])
             ax[active_row, active_column].set_title(f'Channel {i + 1} ')
             # ax[active_row, active_column].xlim(0, f_lim)
             active_column += 1
@@ -163,6 +177,77 @@ def plot_fft(eeg_data, electrodes_to_plot, np_slice_indexes, f_lim, built_filter
                 fig.delaxes(ax[active_row, j])
     if not save:
         plt.show()
+    else:
+        plt.savefig(filename)
+
+
+def plot_fft_binned(eeg_data, electrodes_to_plot, np_slice_indexes, built_filter=None, same_axis=True,
+                    save=False, filename=''):
+
+    eeg_bands = {'Delta': (0.5, 4),
+                 'Theta': (4, 8),
+                 'Alpha': (8, 12),
+                 'Beta': (12, 30),
+                 'Gamma': (30, 45)}
+    row = 0
+    column = 0
+    active_row = 0
+    active_column = 0
+    max_value = 0
+    # electrodes_to_plot = [0, 1, 3]
+    if not same_axis:
+        [row, column] = get_subplot_dimensions(electrodes_to_plot)
+        fig_size = 1 * len(electrodes_to_plot)
+        fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+        fig.tight_layout(pad=0.5)  # edit me when axis labels are added
+        fig.tight_layout(pad=1.5)  # edit me when axis labels are added
+    else:
+        fig, ax = plt.subplots()
+    for i in electrodes_to_plot:
+        if built_filter is None:
+            data_to_plot = eeg_data[np_slice_indexes[i]]
+        else:
+            data_to_plot = butter_highpass_filter(abs(eeg_data[np_slice_indexes[i]]), existing_filter=built_filter)
+        [fft_data, freq] = get_fft(data_to_plot, SAMPLING_SPEED)
+
+        absolute_fft_values = np.absolute(fft_data)
+        sample_frequencies = np.fft.rfftfreq(len(data_to_plot), 1.0 / SAMPLING_SPEED)
+
+        eeg_band_fft = dict()
+        for band in eeg_bands:
+            band_frequency_values = np.where((sample_frequencies >= eeg_bands[band][0]) &
+                                             (sample_frequencies <= eeg_bands[band][1]))[0]
+            eeg_band_fft[band] = np.max(absolute_fft_values[band_frequency_values])
+        df = pd.DataFrame(columns=['band', 'val'])
+        df['band'] = eeg_bands.keys()
+        df['val'] = [eeg_band_fft[band] for band in eeg_bands]
+        my_colors = [(0.50, x / 4.0, x / 5.0) for x in range(len(df))]
+        if not same_axis:
+            if df['val'].max() > max_value:
+                max_value = df['val'].max()
+            df.plot.bar(x='band', y='val', legend=False, color=my_colors, ax=ax[active_row, active_column])
+            ax[active_row, active_column].set_title(f'Channel {i + 1} ')
+            # ax[active_row, active_column].set_xlabel("EEG band")
+            # ax[active_row, active_column].set_ylabel("Maximum band Amplitude")
+            # ax[active_row, active_column].set_ylim([0, 20000])
+            active_column += 1
+            if active_column == column:
+                active_row += 1
+                active_column = 0
+        else:
+            ax = df.plot.bar(x='band', y='val', legend=False, color=my_colors)
+            ax.set_xlabel("EEG band")
+            ax.set_ylabel("Maximum band Amplitude")
+    if not same_axis:
+        if active_column != 0:
+            for j in range(active_column, column):
+                fig.delaxes(ax[active_row, j])
+        for c in range(column):
+            for r in range(row):
+                ax[r, c].set_ylim([0, max_value])
+    if not save:
+        plt.show()
+
     else:
         plt.savefig(filename)
 
@@ -192,20 +277,27 @@ def generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path, patch_d
                 index = np.index_exp[:, i]
                 eeg_data[index] = butter_highpass_filter((eeg_data[index]), existing_filter=generated_filter)
     else:
-        filename = 'gtec/run_3.hdf5'
-        hf = h5py.File(filename, 'r')
-        tst = hf['RawData']
-        tst_samples = tst['Samples']
-        eeg_data = tst_samples[()]  # () gets all data
+        hf = h5py.File(file_path, 'r')
+        if 'hdf5' in file_path:
+            tst = hf['RawData']
+            tst_samples = tst['Samples']
+            eeg_data = tst_samples[()]  # () gets all data
+            # print(len(eeg_data))
+            # eeg_data = eeg_data[92169-512:92169, :]
+            eeg_data = eeg_data[:, :]
+            for i in range(64):
+                index = np.index_exp[:, i]
+                eeg_data[index] = eeg_data[index] - eeg_data[:, 62]
+        else:
+            samples = hf['raw_data']
+            eeg_data = samples[()]
+            # eeg_data = eeg_data[100*512:150*512, :]
+
+
     # print(len(eeg_data))
     # print(eeg_data.transpose())
     ch_types = ['eeg'] * 64
 
-    ch_names = ['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
-                'CP5', 'CP3', 'CP1', 'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz', 'POz', 'Pz', 'CPz',
-                'Fpz', 'Fp2', 'AF8', 'AF4', 'AFz', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
-                'Cz', 'C2', 'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'PO4',
-                'O2']
 
     info = mne.create_info(ch_names=ch_names, ch_types=ch_types,
                            sfreq=SAMPLING_SPEED)  # TODO flesh out with real cap info
@@ -225,33 +317,47 @@ def clean_mne_data_ica(raw_data):
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
 
-    plot_filtered(raw_data.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=True,
-                  filename='sinTest_pre_filter.png')
-    plot_fft(raw_data.get_data().transpose(), electrodes_to_plot, index_dict, f_lim=100, same_axis=False, save=True,
-             filename='sinTest_pre_filter_fft.png')
+    # plot_filtered(raw_data.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=True,
+    #               filename='sinTest_pre_filter.png')
+    # plot_fft(raw_data.get_data().transpose(), electrodes_to_plot, index_dict, f_lim=50, same_axis=False, save=True,
+    #          filename='sinTest_pre_filter_fft.png')
+    #
+    # plot_fft_binned(raw_data.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=True,
+    #                 filename=f'pre-filter_EEG_FT_BINNED.png')
 
-    filt_raw = raw_data.copy().filter(l_freq=0.01, h_freq=100)
+    filt_int = raw_data.copy().filter(l_freq=0.01, h_freq=100)
+    filt_raw = filt_int.copy().filter(l_freq=48, h_freq=52)
 
-    plot_filtered(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=True,
+    plot_filtered(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
                   filename='sinTest_post_filter.png')
-    plot_fft(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, f_lim=100, same_axis=False, save=True,
+    plot_fft(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, f_lim=50, same_axis=False, save=False,
              filename='sinTest_post_filter_fft.png')
 
-    ica = mne.preprocessing.ICA(n_components=25, max_iter='auto', random_state=97)
-    data = ica.fit(filt_raw)
-    # ica.plot_sources(raw_data, show_scrollbars=True)
+    plot_fft_binned(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
+                    filename=f'post-filter_EEG_FT_BINNED.png')
+
+
+    # ica = mne.preprocessing.ICA(n_components=12, max_iter='auto', random_state=97)
+    # ica.fit(filt_raw)
+    # ica.plot_sources(filt_raw, show_scrollbars=True)
     # ica.plot_components()
+
+
+
     # ica.plot_properties(raw_data, picks=[0, 1])
-    ica.exclude = [0, 7]  # Removing ICA components
+
     # removing the components
-    reconstructed_raw = raw_data.copy()
-    out = ica.apply(reconstructed_raw)
+    # ica.exclude = [2, 7, 2, 10]  # Removing ICA components
+    # reconstructed_raw = filt_raw.copy()
+    # out = ica.apply(reconstructed_raw)
+    # data = out.get_data()
 
-    # raw_data.plot(show_scrollbars=False)
-    # reconstructed_raw.plot(show_scrollbars=True, start=0, duration=1000)
-    # ica.plot_sources(reconstructed_raw, show_scrollbars=False)
+    #
+    # # raw_data.plot(show_scrollbars=False)
+    # # reconstructed_raw.plot(show_scrollbars=True, start=0, duration=1000)
+    # # ica.plot_sources(reconstructed_raw, show_scrollbars=False)
+    #
 
-    data = out.get_data()
     # print(len(data))
     # print(len(data[0]))
 
@@ -259,6 +365,10 @@ def clean_mne_data_ica(raw_data):
 
     # plot_filtered(data.transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
     #               filename='one_min_patch_data_PostBasicICA.png')
+    # plot_fft(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, f_lim=50, same_axis=False, save=False,
+    #          filename='one_min_patch_data_PostBasicICA_fft.png')
+    # plot_fft_binned(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
+    #                 filename=f'post_ICA_EEG_FT_BINNED.png')
     # ica.plot_properties(raw_data, picks=[0, 1])
     # print('here')
     # ica.plot_sources(raw_data, show_scrollbars=True)
@@ -344,36 +454,96 @@ def do_some_hdfs5_analysis(filename, source='custom', filter_data=False, saved_i
     index_dict = {}
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
+        # index_dict[i] = np.index_exp[90*512:100*512, i]
+        # index_dict[i] = np.index_exp[51200:87040, i]
         # index_dict[i] = np.index_exp[200:1000, i] # Swap me if you want to remove filter data
     if filter_data:
         [b, a] = butter_highpass(0.00000001, SAMPLING_SPEED, order=5)
         plot_filtered(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], same_axis=False)
         plot_fft(eeg_data, electrodes_to_plot, index_dict, built_filter=[b, a], f_lim=20, same_axis=False)
     else:
-        plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=True, save=True,
+        plot_filtered(eeg_data, electrodes_to_plot, index_dict, same_axis=True, save=False,
                       filename=f'{saved_image}_EEG_Raw.png')
-        plot_fft(eeg_data, electrodes_to_plot, index_dict, f_lim=20, same_axis=True, save=True,
-                 filename=f'{saved_image}_EEG_FT.png')
+        # plot_fft(eeg_data, electrodes_to_plot, index_dict, f_lim=20, same_axis=False, save=False,
+        #          filename=f'{saved_image}_EEG_FT.png')
+        # plot_fft_binned(eeg_data, electrodes_to_plot, index_dict, same_axis=False, save=True,
+        #                 filename=f'{saved_image}_EEG_FT_BINNED.png')
 
+
+def test_mne_clean_and_ref(raw_data, tmin_crop, tmax_crop):
+    # Not plotting for reference electrodes
+    electrodes_to_plot = [x for x in range(62)]
+    raw_data.crop(tmin=tmin_crop, tmax=tmax_crop).load_data()
+    index_dict = {}
+    # raw_data.pick([ch_names[n] for n in range(0, 3)])
+    for i in electrodes_to_plot:
+        index_dict[i] = np.index_exp[:, i]
+
+    # filt_int = raw_data.copy().filter(l_freq=0.01, h_freq=100)
+    # filt_raw = filt_int.copy().filter(l_freq=49.99999, h_freq=50)
+
+    filt_raw = raw_data
+
+    # Filter data
+    # filt_raw.set_eeg_reference(ref_channels=['A1'])
+    filt_raw.plot(scalings='auto')
+
+    # ica = mne.preprocessing.ICA(n_components=12, max_iter='auto', random_state=97)
+    # ica.fit(filt_raw)
+    # # ica.plot_properties(filt_raw, picks=[0, 3])
+    # ica.exclude = [1, 3]
+    # ica.apply(filt_raw)
+    # filt_raw.plot(scalings='auto')
+    # ica.plot_sources(filt_raw, show_scrollbars=True)
+    # ica.plot_components()
+    # out = ica.apply(reconstructed_raw)
+
+    # Ref doesn't change output ...
+    raw_bip_ref = mne.set_bipolar_reference(filt_raw, anode=ch_names,
+                                            cathode=['A1' for i in range(64)])
+    # raw_bip_ref.plot(scalings='auto')
+    #
+    # raw_bip_ref.plot()
+    #
+
+    # plot_filtered(raw_bip_ref.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
+    #               filename=f'yes_EEG_Raw.png')
+    # raw_bip_ref.plot_psd(fmin=2., fmax=40., average=True, spatial_colors=False)
+
+    # plot_fft_binned(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
+    #                 filename=f'e_o_72-76s_BINNED.png')
+
+    # raw_bip_ref.plot(scalings='auto')
+    # filt_raw.set_eeg_reference('average', projection=True)
+    # filt_raw.plot(scalings='auto')
 
 def main():
     # do_some_csv_analysis(patch=True)
-    filename = 'gtec/run_3.hdf5'
-    saved_image = 'run_3'
-    do_some_hdfs5_analysis(filename, source='custom', saved_image=saved_image)
+    # filename = 'gtec/run_3.hdf5'
+    # ds_name = 'alpha_test'
+    # filename = f'custom_suite/{ds_name}.h5'
+    # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
+
+    ds_name = 'H_e_c'
+    # ds_name = 'H_e_blink'
+    filename = f'gtec/{ds_name}.hdf5'
+    # do_some_hdfs5_analysis(filename, source='gtec', saved_image=ds_name)
     # file_type = 'hdfs5'
     # file_path = 'gtec/run_3.hdf5'
 
     #################################
     ############## mne ##############
     #################################
-    # file_type = 'csv'
+    file_type = 'hdfs'
     # # file_path = 'custom_suite/one_minute_half_fixed.csv'
-    # file_path = 'testData/sinTest.csv'
-    # electrodes_to_plot = [0, 1, 2, 3, 4, 5, 6]
-    # [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, file_path,
-    #                                          patch_data=False, filter_data=False)
-
+    # # file_path = 'testData/sinTest.csv'
+    electrodes_to_plot = [0, 1, 2, 3, 4, 63]
+    [raw, info] = generate_mne_raw_with_info(file_type, electrodes_to_plot, filename,
+                                             patch_data=False, filter_data=False)
+    #
+    tmin_crop = 72
+    tmax_crop = 76
+    test_mne_clean_and_ref(raw, tmin_crop, tmax_crop)
     # clean_mne_data_ica(raw)
 
     # plot_sensor_locations(raw)

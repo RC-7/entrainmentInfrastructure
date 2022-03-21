@@ -1,7 +1,7 @@
 import json
 import requests
 
-f = open('runnners/aws_resources.json')
+f = open('../runnners/aws_resources.json')
 aws_resources = json.load(f)
 lambda_url = aws_resources['get_data_url']['value']
 api_key = aws_resources['get_data_api_key']['value']
