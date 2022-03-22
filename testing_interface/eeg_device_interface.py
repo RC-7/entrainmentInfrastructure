@@ -69,17 +69,10 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         return impedance_values
 
     def more(self, samples):
-        print('-----------------------------------------')
-        print('------------- More test -------------')
-        print(samples)
-        print(f'Rows: {len(samples)}')
-        print(f'Columns: {len(samples[0])}')
-        print('-----------------------------------------')
         if len(self.active_data) == 0:
             self.active_data = samples
         else:
-            self.active_data = np.append(self.active_data, self.eeg_device.GetData(self.eeg_device.SamplingRate),
-                                         axis=0)
+            self.active_data = np.append(self.active_data, samples, axis=0)
         # Every Two minutes write data in file to keep active memory low
         if self.save_intermediate_data and len(self.active_data) > INTERMEDIATE_SAMPLE_WRITE_THRESHOLD:
             options = {
@@ -103,15 +96,9 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.active_data = []
         self.data_received_cycles = number_of_minutes * 60  # Minutes to number of sampling periods
         # Testing increasing first argument, will get half of a minute's worth of samples
-        data = self.eeg_device.GetData(self.eeg_device.SamplingRate * 30, self.more)
+        self.eeg_device.GetData(self.eeg_device.SamplingRate, self.more)
         self.save_intermediate_data = save_intermediate_data
         self.filename = filename
-        print('-----------------------------------------')
-        print('------------- Get data test -------------')
-        print(data)
-        print(f'Rows: {len(data)}')
-        print(f'Columns: {len(data[0])}')
-        print('-----------------------------------------')
         options = {
             'dataset_name': 'raw_data',
             'keep_alive': False

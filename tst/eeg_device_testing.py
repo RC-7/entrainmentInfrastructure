@@ -21,6 +21,9 @@ def main():
         elif user_input == 'data':
             print("Enter a filename")
             filename = input()
+            if '.h5' not in filename:
+                filename = filename + '.h5'
+                print(f'Saving data to: {filename}')
             print("Enter the number of cycles to run")
             number_of_cycles = input()
             gtec_device.get_data(int(number_of_cycles), True, filename)
