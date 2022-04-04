@@ -58,3 +58,5 @@ pyenv
 Vagrantfile
 
 __pycache__
+*.h5
+*.png
