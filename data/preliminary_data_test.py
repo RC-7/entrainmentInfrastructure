@@ -9,6 +9,7 @@ from numpy.fft import fft
 import mne
 import matplotlib as mpl
 import pandas as pd
+from scipy.signal import stft
 
 ch_names = ['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
             'CP5', 'CP3', 'CP1', 'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz', 'POz', 'Pz', 'CPz',
@@ -127,7 +128,7 @@ def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True
                 active_row += 1
                 active_column = 0
         else:
-            ax.plot(x_val, data_to_plot, label=str(i+1))
+            ax.plot(x_val, data_to_plot, label=str(i + 1))
     if same_axis:
         ax.legend()
     else:
@@ -189,12 +190,12 @@ def get_binnned_fft(eeg_data):
     [fft_data, freq] = get_fft(eeg_data, SAMPLING_SPEED)
     absolute_fft_values = np.absolute(fft_data)
     sample_frequencies = np.fft.rfftfreq(len(eeg_data), 1.0 / SAMPLING_SPEED)
-
+    # sample_frequencies = freq
     eeg_band_fft = dict()
     for band in eeg_bands:
         band_frequency_values = np.where((sample_frequencies >= eeg_bands[band][0]) &
                                          (sample_frequencies <= eeg_bands[band][1]))[0]
-        eeg_band_fft[band] = np.max(absolute_fft_values[band_frequency_values])
+        eeg_band_fft[band] = np.mean(absolute_fft_values[band_frequency_values])
     df = pd.DataFrame(columns=['band', 'val'])
     df['band'] = eeg_bands.keys()
     df['val'] = [eeg_band_fft[band] for band in eeg_bands]
@@ -250,7 +251,7 @@ def plot_band_changes(eeg_data_mne, tmin_crop, tmax_crop, electrodes_to_plot, np
         df = bands[i]
         my_colors = [(0.50, x / 4.0, x / 5.0) for x in range(len(df))]
         df.plot(xticks=df.index, y=band_names, legend=False, ax=ax[active_row, active_column])
-        ax[active_row, active_column].set_title(f'Channel {i + 1} ')
+        ax[active_row, active_column].set_title(ch_names[i])
 
         active_column += 1
         if active_column == column:
@@ -268,6 +269,7 @@ def plot_band_changes(eeg_data_mne, tmin_crop, tmax_crop, electrodes_to_plot, np
         plt.show()
     else:
         plt.savefig(filename)
+
 
 def plot_fft_binned(eeg_data, electrodes_to_plot, np_slice_indexes, built_filter=None, same_axis=True,
                     save=False, filename=''):
@@ -365,17 +367,16 @@ def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_da
             eeg_data = samples[()]
             # eeg_data = eeg_data[100*512:150*512, :]
 
-
     # print(len(eeg_data))
     # print(eeg_data.transpose())
     ch_types = ['eeg'] * 64
-
 
     info = mne.create_info(ch_names=ch_names, ch_types=ch_types,
                            sfreq=SAMPLING_SPEED)  # TODO flesh out with real cap info
     info.set_montage('standard_1020')  # Will auto set channel names on real cap
     info['description'] = 'My custom dataset'
     raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
+    raw.filter(l_freq=1., h_freq=None)  # removing slow drifts
     return [raw, info]
 
 
@@ -408,13 +409,10 @@ def clean_mne_data_ica(raw_data):
     plot_fft_binned(filt_raw.get_data().transpose(), electrodes_to_plot, index_dict, same_axis=False, save=False,
                     filename=f'post-filter_EEG_FT_BINNED.png')
 
-
     # ica = mne.preprocessing.ICA(n_components=12, max_iter='auto', random_state=97)
     # ica.fit(filt_raw)
     # ica.plot_sources(filt_raw, show_scrollbars=True)
     # ica.plot_components()
-
-
 
     # ica.plot_properties(raw_data, picks=[0, 1])
 
@@ -546,6 +544,8 @@ def view_data(raw_data, tmin_crop=None, tmax_crop=None):
     data_to_view = raw_data.copy()
     if tmax_crop is not None and tmin_crop is not None:
         data_to_view.crop(tmin=tmin_crop, tmax=tmax_crop).load_data()
+    elif tmax_crop is None and tmin_crop is not None:
+        data_to_view.crop(tmin=tmin_crop).load_data()
     data_to_view.plot(scalings='auto')
     print('--------------------------------------------------')
     print(f'max: {type(data_to_view.get_data().transpose())}')
@@ -569,18 +569,20 @@ def test_mne_clean_and_ref(raw_data, tmin_crop, tmax_crop):
 
     # Filter data
     # filt_raw.set_eeg_reference(ref_channels=['A1'])
-    filt_raw.plot(scalings='auto')
-
-    # ica = mne.preprocessing.ICA(n_components=12, max_iter='auto', random_state=97)
-    # ica.fit(filt_raw)
-    # # ica.plot_properties(filt_raw, picks=[0, 3])
-    # ica.exclude = [1, 3]
-    # ica.apply(filt_raw)
     # filt_raw.plot(scalings='auto')
-    # ica.plot_sources(filt_raw, show_scrollbars=True)
-    # ica.plot_components()
-    # out = ica.apply(reconstructed_raw)
 
+    ica = mne.preprocessing.ICA(n_components=12, max_iter='auto', random_state=97)
+    ica.fit(filt_raw)
+    # ica.plot_properties(filt_raw)
+    # Removing EOG
+    # ica.plot_sources(filt_raw, show_scrollbars=True)
+    ica.exclude = [0]
+    # ica.apply(filt_raw)
+    # ica.plot_components()
+    ica.apply(filt_raw)
+    filt_raw.plot(scalings='auto')
+    # filt_raw.plot_psd()
+    # filt_raw.plot(scalings='auto')
     # Ref doesn't change output ...
     raw_bip_ref = mne.set_bipolar_reference(filt_raw, anode=ch_names,
                                             cathode=['A1' for i in range(64)])
@@ -599,11 +601,76 @@ def test_mne_clean_and_ref(raw_data, tmin_crop, tmax_crop):
     # raw_bip_ref.plot(scalings='auto')
     # filt_raw.set_eeg_reference('average', projection=True)
     # filt_raw.plot(scalings='auto')
+    return filt_raw
+
+
+def remove_blinks(raw_data):
+    # print(len(raw_data.get_data()[0])/SAMPLING_SPEED)
+    initial_end = len(raw_data.get_data()[0])/SAMPLING_SPEED
+    ica_period = 100
+    tmin = 100
+    tmax = tmin + ica_period
+    while tmax < initial_end:
+        test_Ds = raw_data.copy()
+        test_Ds.crop(tmin=tmin, tmax=tmax).load_data()
+        ica = mne.preprocessing.ICA(n_components=12, max_iter='auto', random_state=97, verbose='WARNING')
+        ica.fit(test_Ds, verbose='WARNING')
+        ica.exclude = [0]
+        # ica.plot_sources(test_Ds, show_scrollbars=True)
+        ica.apply(test_Ds, verbose='WARNING')
+        raw_data.append(test_Ds)
+        tmin += ica_period
+        if tmax + ica_period > initial_end:
+            # print(initial_end)
+            tmax = initial_end
+        else:
+            tmax += ica_period
+    raw_data.crop(tmin=initial_end).load_data()
+    # print(len(raw_data.get_data()[0])/SAMPLING_SPEED)
+    # view_data(raw_data)
+    return raw_data
+
+
+def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None):
+    column = 0
+    active_row = 0
+    active_column = 0
+    [row, column] = get_subplot_dimensions(electrodes_to_plot)
+    fig_size = 1 * len(electrodes_to_plot)
+    fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+    fig.tight_layout(pad=0.5)  # edit me when axis labels are added
+    fig.tight_layout(pad=1.5)  # edit me when axis labels are added
+    data = eeg_data.get_data().transpose()
+    for i in electrodes_to_plot:
+        data_to_plot = data[np_slice_indexes[i]]
+        # print(data_to_plot)
+        f, t, Zxx = signal.stft(data_to_plot, SAMPLING_SPEED, nperseg=SAMPLING_SPEED)
+        ax[active_row, active_column].pcolormesh(t, f, np.abs(Zxx), shading='gouraud')    #  vmin=0, vmax=amp,
+        # ax[active_row, active_column].plot(data_to_plot)
+        ax[active_row, active_column].set_title(ch_names[i])
+        ax[active_row, active_column].set_title(ch_names[i])
+        ax[active_row, active_column].set(ylim=[0, 30])
+        active_column += 1
+        if active_column == column:
+            active_row += 1
+            active_column = 0
+        # ax[active_row, active_column].title('STFT Magnitude')
+        # ax[active_row, active_column].ylabel('Frequency [Hz]')
+        # ax[active_row, active_column].xlabel('Time [sec]')
+    if not save:
+        plt.show()
+    else:
+        plt.savefig(filename)
+
+def crop_data(raw_data, tmin_crop, tmax_crop):
+    data = raw_data.copy()
+    return data.crop(tmin=tmin_crop).load_data()
 
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'alpha_test'
+    ds_name = 'alpha_test_15'
+    # ds_name = 'eyes_closed_with_oculus'
     filename = f'custom_suite/{ds_name}.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -626,20 +693,25 @@ def main():
     # tmin_crop = 100
     # tmax_crop = 175
 
-    tmin_crop = 140
-    tmax_crop = 160
-    # tmax_crop = 130
-    # view_data(raw)
-    # test_mne_clean_and_ref(raw, tmin_crop, tmax_crop)
-    # clean_mne_data_ica(raw)
+    # ica_data = remove_blinks(raw)
 
+    tmin_crop = 100
+    tmax_crop = 238
+    # # tmax_crop = 130
+    # view_data(raw, tmin_crop)
+    # raw_ica_removed = test_mne_clean_and_ref(raw, tmin_crop, tmax_crop)
+    # # # clean_mne_data_ica(raw)
+    # tmin_crop = 0
+    # tmax_crop = len(raw_ica_removed.get_data()[0])/512
     electrodes_to_plot = [x for x in range(62)]
     index_dict = {}
     # raw_data.pick([ch_names[n] for n in range(0, 3)])
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
-    plot_band_changes(raw, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
-                      filename='Alpha_test_band_change_10s_bin_140-160s_OnlyAlpha.png')
+    cropped_data = crop_data(raw, tmin_crop, tmax_crop)
+    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='alpha_n_filter_1s.png')
+    # plot_band_changes(raw, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=False, save=True,
+    #                   filename='10s_FFT_mean_test.png')
     # plot_sensor_locations(raw)
     # plot_topo_map(raw)
 
