@@ -384,7 +384,7 @@ def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_da
     info.set_montage('standard_1020')  # Will auto set channel names on real cap
     info['description'] = 'My custom dataset'
     raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
-    # raw.filter(l_freq=1., h_freq=None)  # removing slow drifts
+    raw.filter(l_freq=1., h_freq=None)  # removing slow drifts
     return [raw, info]
 
 
@@ -781,7 +781,7 @@ def get_eog_template_raw(raw_data, window):
             displacement = f(raw_data[index_fp1])
             for i in range(len(displacement)):
                 if displacement[i] > mean_value_fp1 + 2 * std_div_fp1:
-                    eb_start = i - 100
+                    eb_start = i - 200
                     eb_index_low = current_window_low + eb_start
                     eb_index_high = eb_index_low + SAMPLING_SPEED
                     eb_indices.append([eb_index_low, eb_index_high])
@@ -858,6 +858,7 @@ def clean_CCA(raw_data):
     template_data = get_eog_template_raw(raw_data, window)
     # plot_blinks(raw_data, window)
     eog_template = get_eog_template_emd(template_data)
+    plt.plot(eog_template)
 
 
 def main():
