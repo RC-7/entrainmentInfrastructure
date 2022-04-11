@@ -716,12 +716,12 @@ def clean_CCA(raw_data):
     output = []
     bool_of_blink = []
     eb_indices = []
-    print(max_sample)
+    eb_templates = []
+    eb_template_index = []
     while current_window_low + window <= max_sample:
         index_fp1 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp1')]
         index_fp2 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp2')]
         correl = pearsonr(raw_data[index_fp1], raw_data[index_fp2])
-        # print(correl)
         # ID epochs with blinks based on Fp1 and Fp2 correlation
         if max(correl) > 0.9:
             mean_value_fp1 = np.mean(raw_data[index_fp1])
@@ -730,52 +730,50 @@ def clean_CCA(raw_data):
             displacement = f(raw_data[index_fp1])
             for i in range(len(displacement)):
                 if displacement[i] > mean_value_fp1 + 2 * std_div_fp1:
-                    eb_start = i - 100
-                    sample_index_low = current_window_low + eb_start
-                    eb_indices.append([sample_index_low, sample_index_low + SAMPLING_SPEED])
-                    # append_array = [50 for i in range(window - 1)]
-                    # append_array.append(0)
+                    eb_start = i - 99
+                    eb_index_low = current_window_low + eb_start
+                    eb_index_high = eb_index_low + SAMPLING_SPEED
+                    eb_indices.append([eb_index_low, eb_index_high])
+                    index_eb = np.index_exp[eb_index_low:eb_index_high, ch_names.index('Fp1')]
+                    eb_templates.append(raw_data[index_eb])
+                    if len(eb_templates) >= 2 and len(eb_template_index) < 2:
+                        # print(len(eb_templates))
+                        for j in range(len(eb_templates)):
+                            for z in range(len(eb_templates)):
+                                if j == z:
+                                    continue
+                                # print(len(eb_templates[z]))
+                                if len(eb_templates[z]) != len(eb_templates[j]):
+                                    continue
+                                if len(eb_template_index) >= 2:
+                                    break
+                                correl_templates = pearsonr(eb_templates[j], eb_templates[z])
+                                if correl_templates[0] > 0.9 :
+                                    eb_template_index.append(j)
+                                    eb_template_index.append(z)
+                                    # Return in real code here
+                                    break
+
                     break
-                    # if eb_start > 0:
-                    #     append_array = [0 for i in range(eb_start)]
-                    #     append_array = np.append(append_array, [50 for i in range(eb_start, window - 1)], axis=0)
-                    #     append_array.append(0)
-                    #     print(append_array)
-                    # else:
-                    #     bool_of_blink = bool_of_blink[:eb_start]
-                    #     append_array = [0 for i in range(eb_start)]
-                    #     append_array = np.append(append_array, [50 for i in range(eb_start, window - 1)], axis=0)
-                    #     append_array.append(0)
-
-
-            # cca = CCA(n_components=1)
-            # cca.fit(raw_data[index_fp1], raw_data[index_fp2])
-            # X_c, Y_c = cca.transform(raw_data[index_fp1], raw_data[index_fp2])
-        else:
-            append_array = [0 for i in range(window)]
-        # bool_of_blink = np.append(bool_of_blink, append_array, axis=0)
         current_window_low += window
-    # bool_of_blink = np.append(bool_of_blink, [0], axis=0)
-
     blink_index = 0
     min_index = eb_indices[0][0]
     max_index = eb_indices[0][1]
     for i in range(len(raw_data[:, 0])):
-        if i >= min_index and i < max_index:
+        if min_index <= i < max_index:
             bool_of_blink.append(50)
         elif i == max_index:
             bool_of_blink.append(0)
-            blink_index += 1
-            min_index = eb_indices[blink_index][0]
-            max_index = eb_indices[blink_index][1]
-
+            if blink_index != len(eb_indices) - 1:
+                blink_index += 1
+                min_index = eb_indices[blink_index][0]
+                max_index = eb_indices[blink_index][1]
         else:
             bool_of_blink.append(0)
 
-    # raw_data = np.append(raw_data, bool_of_blink, axis=0)
     temp = np.vstack([ele for ele in [np.transpose(raw_data), bool_of_blink]])
     raw_data = np.transpose(temp)
-    electrodes_to_plot = [0, 1, 3, 64]
+    electrodes_to_plot = [0, 1, 64]
     index_dict = {}
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
@@ -816,7 +814,7 @@ def main():
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
     tmin_crop = 360
-    tmax_crop = 380
+    tmax_crop = 420
     # # tmax_crop = 130
     cropped_data = crop_data(raw, tmin_crop, tmax_crop)
     # view_data(cropped_data)
