@@ -15,6 +15,8 @@ from scipy import signal
 from scipy.signal import stft
 import matplotlib.ticker as plticker
 from sklearn.cross_decomposition import CCA
+import emd
+from sklearn.metrics import mean_squared_error
 
 ch_names = ['Fp1', 'Fp2', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
             'CP5', 'CP3', 'CP1', 'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz', 'POz', 'Pz', 'CPz',
@@ -382,7 +384,7 @@ def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_da
     info.set_montage('standard_1020')  # Will auto set channel names on real cap
     info['description'] = 'My custom dataset'
     raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
-    raw.filter(l_freq=1., h_freq=None)  # removing slow drifts
+    # raw.filter(l_freq=1., h_freq=None)  # removing slow drifts
     return [raw, info]
 
 
@@ -708,10 +710,8 @@ def test_psd(data, electrodes_to_plot, np_slice_indexes):
     plt.savefig(filename)
 
 
-#     First pass will work with numpy array, not mne data
-def clean_CCA(raw_data):
+def plot_blinks (raw_data, window):
     current_window_low = 0
-    window = SAMPLING_SPEED * 2
     max_sample = len(raw_data[:, 0])
     output = []
     bool_of_blink = []
@@ -736,24 +736,6 @@ def clean_CCA(raw_data):
                     eb_indices.append([eb_index_low, eb_index_high])
                     index_eb = np.index_exp[eb_index_low:eb_index_high, ch_names.index('Fp1')]
                     eb_templates.append(raw_data[index_eb])
-                    if len(eb_templates) >= 2 and len(eb_template_index) < 2:
-                        # print(len(eb_templates))
-                        for j in range(len(eb_templates)):
-                            for z in range(len(eb_templates)):
-                                if j == z:
-                                    continue
-                                # print(len(eb_templates[z]))
-                                if len(eb_templates[z]) != len(eb_templates[j]):
-                                    continue
-                                if len(eb_template_index) >= 2:
-                                    break
-                                correl_templates = pearsonr(eb_templates[j], eb_templates[z])
-                                if correl_templates[0] > 0.9 :
-                                    eb_template_index.append(j)
-                                    eb_template_index.append(z)
-                                    # Return in real code here
-                                    break
-
                     break
         current_window_low += window
     blink_index = 0
@@ -779,6 +761,103 @@ def clean_CCA(raw_data):
         index_dict[i] = np.index_exp[:, i]
     plot_filtered(raw_data, electrodes_to_plot, index_dict, same_axis=True, save=False,
                   filename=f'yes_EEG_Raw.png')
+
+
+def get_eog_template_raw(raw_data, window):
+    current_window_low = 0
+    max_sample = len(raw_data[:, 0])
+    eb_indices = []
+    eb_templates = []
+    eb_template_index = []
+    while current_window_low + window <= max_sample:
+        index_fp1 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp1')]
+        index_fp2 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp2')]
+        correl = pearsonr(raw_data[index_fp1], raw_data[index_fp2])
+        # ID epochs with blinks based on Fp1 and Fp2 correlation
+        if max(correl) > 0.9:
+            mean_value_fp1 = np.mean(raw_data[index_fp1])
+            std_div_fp1 = np.std(raw_data[index_fp1])
+            f = lambda x: np.abs(x - mean_value_fp1)
+            displacement = f(raw_data[index_fp1])
+            for i in range(len(displacement)):
+                if displacement[i] > mean_value_fp1 + 2 * std_div_fp1:
+                    eb_start = i - 100
+                    eb_index_low = current_window_low + eb_start
+                    eb_index_high = eb_index_low + SAMPLING_SPEED
+                    eb_indices.append([eb_index_low, eb_index_high])
+                    index_eb = np.index_exp[eb_index_low:eb_index_high, ch_names.index('Fp1')]
+                    eb_templates.append(raw_data[index_eb])
+                    if len(eb_templates) >= 2 and len(eb_template_index) < 2:
+                        for j in range(len(eb_templates)):
+                            for z in range(len(eb_templates)):
+                                if j == z:
+                                    continue
+                                if len(eb_templates[z]) != len(eb_templates[j]):
+                                    continue
+                                if len(eb_template_index) >= 2:
+                                    break
+                                correl_templates = pearsonr(eb_templates[j], eb_templates[z])
+                                if correl_templates[0] > 0.9:
+                                    return [eb_templates[j], eb_templates[z]]
+
+                    break
+        current_window_low += window
+
+
+def get_sd(previous_iteration, current_iteration):
+    sd = 0
+    for i in range(len(previous_iteration)):
+        sd += ((previous_iteration[i]-current_iteration[i]) ** 2) / ((previous_iteration[i])**2)
+    return sd
+
+
+def get_next_imf(x, sd_thresh=0.2):
+    sifting_signal = x.copy()
+    continue_sift = True
+
+    while continue_sift:
+        upper_env = emd.sift.interp_envelope(sifting_signal, mode='upper')
+        lower_env = emd.sift.interp_envelope(sifting_signal, mode='lower')
+        avg_env = (upper_env+lower_env) / 2
+
+        tmp = sifting_signal - avg_env
+
+        sd = get_sd(sifting_signal, tmp)
+
+        stop = sd <= sd_thresh
+
+        sifting_signal = sifting_signal - avg_env
+        if stop:
+            continue_sift = False
+
+    return sifting_signal
+
+
+def get_eog_template_emd(raw_template_data):
+    emd_templates = []
+    # Can use EMD sift function below
+    # emd_templates = emd.sift.sift(raw_template_data[1], max_imfs=5, imf_opts={'sd_thresh': 0.2})
+    # emd.plotting.plot_imfs(emd_templates, cmap=True, scale_y=True)
+    for i in range(len(raw_template_data)):
+        imf_templates = []
+        imf = raw_template_data[i].copy()
+        for j in range(5):
+            imf_iter = get_next_imf(imf)
+            imf = imf - imf_iter
+            imf_templates.append(imf_iter)
+        template = imf_templates[3] + imf_templates[4]
+        emd_templates.append(template)
+
+    template = emd_templates[0] + emd_templates[1] / 2
+
+    return template
+
+#     First pass will work with numpy array, not mne data
+def clean_CCA(raw_data):
+    window = SAMPLING_SPEED * 2
+    template_data = get_eog_template_raw(raw_data, window)
+    # plot_blinks(raw_data, window)
+    eog_template = get_eog_template_emd(template_data)
 
 
 def main():
