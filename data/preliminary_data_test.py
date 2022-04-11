@@ -4,16 +4,21 @@ import numpy as np
 import h5py
 from scipy import signal
 from scipy.signal import freqz
+from scipy.signal import correlate
+from scipy.stats import pearsonr
 from math import sqrt, ceil
 from numpy.fft import fft
 import mne
 import matplotlib as mpl
 import pandas as pd
+from scipy import signal
 from scipy.signal import stft
+import matplotlib.ticker as plticker
+from sklearn.cross_decomposition import CCA
 
-ch_names = ['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
+ch_names = ['Fp1', 'Fp2', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
             'CP5', 'CP3', 'CP1', 'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz', 'POz', 'Pz', 'CPz',
-            'Fpz', 'Fp2', 'AF8', 'AF4', 'AFz', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
+            'Fpz', 'AF7', 'AF8', 'AF4', 'AFz', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
             'Cz', 'C2', 'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'A1',
             'A2']
 eeg_bands = {'Delta': (0.5, 4),
@@ -195,7 +200,7 @@ def get_binnned_fft(eeg_data):
     for band in eeg_bands:
         band_frequency_values = np.where((sample_frequencies >= eeg_bands[band][0]) &
                                          (sample_frequencies <= eeg_bands[band][1]))[0]
-        eeg_band_fft[band] = np.mean(absolute_fft_values[band_frequency_values])
+        eeg_band_fft[band] = np.max(absolute_fft_values[band_frequency_values])
     df = pd.DataFrame(columns=['band', 'val'])
     df['band'] = eeg_bands.keys()
     df['val'] = [eeg_band_fft[band] for band in eeg_bands]
@@ -207,7 +212,7 @@ def get_binnned_fft(eeg_data):
 def plot_band_changes(eeg_data_mne, tmin_crop, tmax_crop, electrodes_to_plot, np_slice_indexes, save=False,
                       filename='', only_alpha=False):
     # 10 s FFT windows
-    fft_window = 10
+    fft_window = 1
     current_window_low = tmin_crop
     max_value = 0
     bands = {}
@@ -269,6 +274,7 @@ def plot_band_changes(eeg_data_mne, tmin_crop, tmax_crop, electrodes_to_plot, np
         plt.show()
     else:
         plt.savefig(filename)
+        plt.close(fig)
 
 
 def plot_fft_binned(eeg_data, electrodes_to_plot, np_slice_indexes, built_filter=None, same_axis=True,
@@ -576,7 +582,7 @@ def test_mne_clean_and_ref(raw_data, tmin_crop, tmax_crop):
     # ica.plot_properties(filt_raw)
     # Removing EOG
     # ica.plot_sources(filt_raw, show_scrollbars=True)
-    ica.exclude = [0]
+    ica.exclude = [0, 4]
     # ica.apply(filt_raw)
     # ica.plot_components()
     ica.apply(filt_raw)
@@ -584,8 +590,8 @@ def test_mne_clean_and_ref(raw_data, tmin_crop, tmax_crop):
     # filt_raw.plot_psd()
     # filt_raw.plot(scalings='auto')
     # Ref doesn't change output ...
-    raw_bip_ref = mne.set_bipolar_reference(filt_raw, anode=ch_names,
-                                            cathode=['A1' for i in range(64)])
+    # raw_bip_ref = mne.set_bipolar_reference(filt_raw, anode=ch_names,
+    #                                         cathode=['A1' for i in range(64)])
     # raw_bip_ref.plot(scalings='auto')
     #
     # raw_bip_ref.plot()
@@ -606,7 +612,7 @@ def test_mne_clean_and_ref(raw_data, tmin_crop, tmax_crop):
 
 def remove_blinks(raw_data):
     # print(len(raw_data.get_data()[0])/SAMPLING_SPEED)
-    initial_end = len(raw_data.get_data()[0])/SAMPLING_SPEED
+    initial_end = len(raw_data.get_data()[0]) / SAMPLING_SPEED
     ica_period = 100
     tmin = 100
     tmax = tmin + ica_period
@@ -645,11 +651,11 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
         data_to_plot = data[np_slice_indexes[i]]
         # print(data_to_plot)
         f, t, Zxx = signal.stft(data_to_plot, SAMPLING_SPEED, nperseg=SAMPLING_SPEED)
-        ax[active_row, active_column].pcolormesh(t, f, np.abs(Zxx), shading='gouraud')    #  vmin=0, vmax=amp,
+        ax[active_row, active_column].pcolormesh(t, f, np.abs(Zxx), shading='gouraud')  # vmin=0, vmax=amp,
         # ax[active_row, active_column].plot(data_to_plot)
         ax[active_row, active_column].set_title(ch_names[i])
         ax[active_row, active_column].set_title(ch_names[i])
-        ax[active_row, active_column].set(ylim=[0, 30])
+        ax[active_row, active_column].set(ylim=[6, 15])
         active_column += 1
         if active_column == column:
             active_row += 1
@@ -660,18 +666,129 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
     if not save:
         plt.show()
     else:
+        # plt.ioff()
         plt.savefig(filename)
+        plt.close(fig)
 
-def crop_data(raw_data, tmin_crop, tmax_crop):
+
+def crop_data(raw_data, tmin_crop=None, tmax_crop=None):
     data = raw_data.copy()
-    return data.crop(tmin=tmin_crop).load_data()
+    if tmax_crop is not None and tmin_crop is not None:
+        data.crop(tmin=tmin_crop, tmax=tmax_crop).load_data()
+    elif tmax_crop is None and tmin_crop is not None:
+        data.crop(tmin=tmin_crop).load_data()
+    return data
+
+
+def test_psd(data, electrodes_to_plot, np_slice_indexes):
+    row = 0
+    column = 0
+    active_row = 0
+    active_column = 0
+    [row, column] = get_subplot_dimensions(electrodes_to_plot)
+    fig_size = 1 * len(electrodes_to_plot)
+    fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+    fig.tight_layout(pad=0.8)  # edit me when axis labels are added
+    for i in range(63):
+        # ax[active_row, active_column].psd(data[np_slice_indexes[i]], 512, 1/512)
+        win = 3 * SAMPLING_SPEED
+        freqs, psd = signal.welch(data[np_slice_indexes[i]], SAMPLING_SPEED, nperseg=win)
+        ax[active_row, active_column].plot(freqs, psd, color='k', lw=2)
+        ax[active_row, active_column].set(xlim=[-5, 20])
+        ax[active_row, active_column].set_title(f'Channel {ch_names[i]} ')
+        loc = plticker.MultipleLocator(base=1.0)  # this locator puts ticks at regular intervals
+        ax[active_row, active_column].xaxis.set_major_locator(loc)
+        ax[active_row, active_column].grid()
+        active_column += 1
+        if active_column == column:
+            active_row += 1
+            active_column = 0
+    filename = 'testpsd_280-284s_zoomed'
+    # plt.grid()
+    plt.savefig(filename)
+
+
+#     First pass will work with numpy array, not mne data
+def clean_CCA(raw_data):
+    current_window_low = 0
+    window = SAMPLING_SPEED * 2
+    max_sample = len(raw_data[:, 0])
+    output = []
+    bool_of_blink = []
+    eb_indices = []
+    print(max_sample)
+    while current_window_low + window <= max_sample:
+        index_fp1 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp1')]
+        index_fp2 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp2')]
+        correl = pearsonr(raw_data[index_fp1], raw_data[index_fp2])
+        # print(correl)
+        # ID epochs with blinks based on Fp1 and Fp2 correlation
+        if max(correl) > 0.9:
+            mean_value_fp1 = np.mean(raw_data[index_fp1])
+            std_div_fp1 = np.std(raw_data[index_fp1])
+            f = lambda x: np.abs(x - mean_value_fp1)
+            displacement = f(raw_data[index_fp1])
+            for i in range(len(displacement)):
+                if displacement[i] > mean_value_fp1 + 2 * std_div_fp1:
+                    eb_start = i - 100
+                    sample_index_low = current_window_low + eb_start
+                    eb_indices.append([sample_index_low, sample_index_low + SAMPLING_SPEED])
+                    # append_array = [50 for i in range(window - 1)]
+                    # append_array.append(0)
+                    break
+                    # if eb_start > 0:
+                    #     append_array = [0 for i in range(eb_start)]
+                    #     append_array = np.append(append_array, [50 for i in range(eb_start, window - 1)], axis=0)
+                    #     append_array.append(0)
+                    #     print(append_array)
+                    # else:
+                    #     bool_of_blink = bool_of_blink[:eb_start]
+                    #     append_array = [0 for i in range(eb_start)]
+                    #     append_array = np.append(append_array, [50 for i in range(eb_start, window - 1)], axis=0)
+                    #     append_array.append(0)
+
+
+            # cca = CCA(n_components=1)
+            # cca.fit(raw_data[index_fp1], raw_data[index_fp2])
+            # X_c, Y_c = cca.transform(raw_data[index_fp1], raw_data[index_fp2])
+        else:
+            append_array = [0 for i in range(window)]
+        # bool_of_blink = np.append(bool_of_blink, append_array, axis=0)
+        current_window_low += window
+    # bool_of_blink = np.append(bool_of_blink, [0], axis=0)
+
+    blink_index = 0
+    min_index = eb_indices[0][0]
+    max_index = eb_indices[0][1]
+    for i in range(len(raw_data[:, 0])):
+        if i >= min_index and i < max_index:
+            bool_of_blink.append(50)
+        elif i == max_index:
+            bool_of_blink.append(0)
+            blink_index += 1
+            min_index = eb_indices[blink_index][0]
+            max_index = eb_indices[blink_index][1]
+
+        else:
+            bool_of_blink.append(0)
+
+    # raw_data = np.append(raw_data, bool_of_blink, axis=0)
+    temp = np.vstack([ele for ele in [np.transpose(raw_data), bool_of_blink]])
+    raw_data = np.transpose(temp)
+    electrodes_to_plot = [0, 1, 3, 64]
+    index_dict = {}
+    for i in electrodes_to_plot:
+        index_dict[i] = np.index_exp[:, i]
+    plot_filtered(raw_data, electrodes_to_plot, index_dict, same_axis=True, save=False,
+                  filename=f'yes_EEG_Raw.png')
+
 
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'alpha_test_15'
+    ds_name = 'full_run'
     # ds_name = 'eyes_closed_with_oculus'
-    filename = f'custom_suite/{ds_name}.h5'
+    filename = f'custom_suite/Full_run/{ds_name}.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
     # ds_name = 'H_e_c'
@@ -694,24 +811,32 @@ def main():
     # tmax_crop = 175
 
     # ica_data = remove_blinks(raw)
-
-    tmin_crop = 100
-    tmax_crop = 238
+    electrodes_to_plot = [x for x in range(63)]
+    index_dict = {}
+    for i in electrodes_to_plot:
+        index_dict[i] = np.index_exp[:, i]
+    tmin_crop = 360
+    tmax_crop = 380
     # # tmax_crop = 130
-    # view_data(raw, tmin_crop)
+    cropped_data = crop_data(raw, tmin_crop, tmax_crop)
+    # view_data(cropped_data)
+    clean_CCA(cropped_data.get_data().transpose())
+    # data = cropped_data.get_data().transpose()
+    # test_psd(data, electrodes_to_plot, index_dict)
+
     # raw_ica_removed = test_mne_clean_and_ref(raw, tmin_crop, tmax_crop)
+
     # # # clean_mne_data_ica(raw)
     # tmin_crop = 0
     # tmax_crop = len(raw_ica_removed.get_data()[0])/512
-    electrodes_to_plot = [x for x in range(62)]
-    index_dict = {}
-    # raw_data.pick([ch_names[n] for n in range(0, 3)])
-    for i in electrodes_to_plot:
-        index_dict[i] = np.index_exp[:, i]
-    cropped_data = crop_data(raw, tmin_crop, tmax_crop)
-    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='alpha_n_filter_1s.png')
-    # plot_band_changes(raw, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=False, save=True,
-    #                   filename='10s_FFT_mean_test.png')
+    # electrodes_to_plot = [x for x in range(62)]
+    # index_dict = {}
+    # # raw_data.pick([ch_names[n] for n in range(0, 3)])
+    # for i in electrodes_to_plot:
+    #     index_dict[i] = np.index_exp[:, i]
+    # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='full_run_no_clean_alpha.png')
+    # plot_band_changes(raw_ica_removed, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
+    #                   filename='entrain_1000-1379s_ICA_removed_alpha_max_1s_fft.png')
     # plot_sensor_locations(raw)
     # plot_topo_map(raw)
 
