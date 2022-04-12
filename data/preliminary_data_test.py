@@ -1,3 +1,5 @@
+import math
+
 from numpy import genfromtxt
 import matplotlib.pyplot as plt
 import numpy as np
@@ -710,7 +712,7 @@ def test_psd(data, electrodes_to_plot, np_slice_indexes):
     plt.savefig(filename)
 
 
-def plot_blinks (raw_data, window):
+def plot_blinks(raw_data, window):
     current_window_low = 0
     max_sample = len(raw_data[:, 0])
     output = []
@@ -718,26 +720,32 @@ def plot_blinks (raw_data, window):
     eb_indices = []
     eb_templates = []
     eb_template_index = []
+    blink_found = False
     while current_window_low + window <= max_sample:
         index_fp1 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp1')]
         index_fp2 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp2')]
         correl = pearsonr(raw_data[index_fp1], raw_data[index_fp2])
         # ID epochs with blinks based on Fp1 and Fp2 correlation
-        if max(correl) > 0.9:
+        if correl[0] > 0.9:
             mean_value_fp1 = np.mean(raw_data[index_fp1])
             std_div_fp1 = np.std(raw_data[index_fp1])
             f = lambda x: np.abs(x - mean_value_fp1)
             displacement = f(raw_data[index_fp1])
             for i in range(len(displacement)):
                 if displacement[i] > mean_value_fp1 + 2 * std_div_fp1:
-                    eb_start = i - 99
+                    eb_start = i - 200
                     eb_index_low = current_window_low + eb_start
-                    eb_index_high = eb_index_low + SAMPLING_SPEED
+                    eb_index_high = eb_index_low + 512
                     eb_indices.append([eb_index_low, eb_index_high])
                     index_eb = np.index_exp[eb_index_low:eb_index_high, ch_names.index('Fp1')]
                     eb_templates.append(raw_data[index_eb])
+                    blink_found = True
                     break
-        current_window_low += window
+        if not blink_found:
+            current_window_low += window
+        else:
+            current_window_low = eb_index_high + 200
+            blink_found = False
     blink_index = 0
     min_index = eb_indices[0][0]
     max_index = eb_indices[0][1]
@@ -755,12 +763,13 @@ def plot_blinks (raw_data, window):
 
     temp = np.vstack([ele for ele in [np.transpose(raw_data), bool_of_blink]])
     raw_data = np.transpose(temp)
-    electrodes_to_plot = [0, 1, 64]
+    electrodes_to_plot = [0, 1, 3, 64]
     index_dict = {}
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
     plot_filtered(raw_data, electrodes_to_plot, index_dict, same_axis=True, save=False,
                   filename=f'yes_EEG_Raw.png')
+    plt.show()
 
 
 def get_eog_template_raw(raw_data, window):
@@ -769,12 +778,13 @@ def get_eog_template_raw(raw_data, window):
     eb_indices = []
     eb_templates = []
     eb_template_index = []
+    blink_found = False
     while current_window_low + window <= max_sample:
         index_fp1 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp1')]
         index_fp2 = np.index_exp[current_window_low:current_window_low + window, ch_names.index('Fp2')]
         correl = pearsonr(raw_data[index_fp1], raw_data[index_fp2])
         # ID epochs with blinks based on Fp1 and Fp2 correlation
-        if max(correl) > 0.9:
+        if correl[0] > 0.9:
             mean_value_fp1 = np.mean(raw_data[index_fp1])
             std_div_fp1 = np.std(raw_data[index_fp1])
             f = lambda x: np.abs(x - mean_value_fp1)
@@ -787,6 +797,7 @@ def get_eog_template_raw(raw_data, window):
                     eb_indices.append([eb_index_low, eb_index_high])
                     index_eb = np.index_exp[eb_index_low:eb_index_high, ch_names.index('Fp1')]
                     eb_templates.append(raw_data[index_eb])
+                    blink_found = True
                     if len(eb_templates) >= 2 and len(eb_template_index) < 2:
                         for j in range(len(eb_templates)):
                             for z in range(len(eb_templates)):
@@ -801,7 +812,32 @@ def get_eog_template_raw(raw_data, window):
                                     return [eb_templates[j], eb_templates[z]]
 
                     break
-        current_window_low += window
+        if not blink_found:
+            current_window_low += window
+        else:
+            current_window_low = eb_index_high + 200
+            blink_found = False
+    # ave_correl = []
+    # if len(eb_templates) >= 2 and len(eb_template_index) < 2:
+    #     for j in range(len(eb_templates)):
+    #         correl_values = []
+    #         for z in range(len(eb_templates)):
+    #             if j == z:
+    #                 continue
+    #             if len(eb_templates[z]) != len(eb_templates[j]):
+    #                 continue
+    #             if len(eb_template_index) >= 2:
+    #                 break
+    #             correl_templates = pearsonr(eb_templates[j], eb_templates[z])
+    #             correl_values.append(correl_templates[0])
+    #         ave_correl.append([correl_values])
+    # tst = []
+    # for i in range(len(ave_correl)):
+    #     tst.append(np.mean(np.abs(ave_correl[i])))
+    # max_correl = np.argmax(tst)
+    # second_max = np.argmax(ave_correl[max_correl])
+    # return [eb_templates[max_correl], eb_templates[second_max]]
+
 
 
 def get_sd(previous_iteration, current_iteration):
@@ -845,27 +881,93 @@ def get_eog_template_emd(raw_template_data):
             imf_iter = get_next_imf(imf)
             imf = imf - imf_iter
             imf_templates.append(imf_iter)
-        template = imf_templates[3] + imf_templates[4]
+            imf_templates.append(imf)
+        template = imf_templates[2] + imf_templates[3] + imf_templates[4] + imf_templates[5]
         emd_templates.append(template)
 
     template = emd_templates[0] + emd_templates[1] / 2
 
     return template
 
+
+def cross_correlate(signal1, signal2):
+    numerator = 0
+    s1_sq_sum = 0
+    s2_sq_sum = 0
+
+    for i in range(len(signal1)):
+        numerator += signal1[i] * signal2[i]
+        s1_sq_sum += signal1[i]**2
+        s2_sq_sum += signal2[i]**2
+    denominator = math.sqrt(s1_sq_sum) * math.sqrt(s2_sq_sum)
+
+    cross_correlation_coefficient = numerator / denominator
+    return cross_correlation_coefficient
+
+
+def remove_blinks_cca(raw_data, blink_template, testing=False):
+    window = len(blink_template)
+    print(window)
+    max_sample = len(raw_data[:, 0])
+    print(max_sample)
+    current_window_low = 0
+    sliding_iter = 50   # Edit me for optimisation
+    blink_found = False
+    blink_counter = 0
+    while current_window_low + window <= max_sample:
+        for i in range(63):
+            index_electrode = np.index_exp[current_window_low:current_window_low + window, i]
+            if len(blink_template) != len(raw_data[index_electrode]):
+                print('here')
+                current_window_low += window
+                continue
+            correl = cross_correlate(raw_data[index_electrode], blink_template)
+            mean_value_fp1 = np.mean(raw_data[index_electrode])
+            std_div_fp1 = np.std(raw_data[index_electrode])
+            f = lambda x: np.abs(x - mean_value_fp1)
+            displacement = f(raw_data[index_electrode])
+            if correl > 0.5 and np.max(displacement) > mean_value_fp1 + 3 * std_div_fp1:
+                # if i == 0:
+                #     print('whoop')
+                #     print(correl)
+                #     blink_counter += 1
+                a1 = np.zeros(window)
+                raw_data[index_electrode] = a1
+                blink_found = True
+        if not blink_found:
+            current_window_low += sliding_iter
+        else:
+            current_window_low += sliding_iter
+            blink_found = False
+    # electrodes_to_plot = [0, 1, 3]
+    electrodes_to_plot = [x for x in range(62)]
+    index_dict = {}
+    # print(f'Blinks: {blink_counter}')
+    for i in electrodes_to_plot:
+        index_dict[i] = np.index_exp[:, i]
+    if testing:
+        plot_filtered(raw_data, electrodes_to_plot, index_dict, same_axis=False, save=True,
+                    filename=f'zerod_blinks.png')
 #     First pass will work with numpy array, not mne data
 def clean_CCA(raw_data):
     window = SAMPLING_SPEED * 2
     template_data = get_eog_template_raw(raw_data, window)
-    # plot_blinks(raw_data, window)
-    eog_template = get_eog_template_emd(template_data)
-    plt.plot(eog_template)
+    # fig, axs = plt.subplots(2)
+    # axs[0].plot(template_data[0])
+    # axs[1].plot(template_data[1])
+    plot_blinks(raw_data, window)
+    blink_template = get_eog_template_emd(template_data)
+    # plt.subplots()
+    # plt.plot(blink_template)
+    # plt.show()
+    remove_blinks_cca(raw_data, blink_template, True)
 
 
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
     ds_name = 'full_run'
-    # ds_name = 'eyes_closed_with_oculus'
+    # # ds_name = 'eyes_closed_with_oculus'
     filename = f'custom_suite/Full_run/{ds_name}.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -889,12 +991,12 @@ def main():
     # tmax_crop = 175
 
     # ica_data = remove_blinks(raw)
-    electrodes_to_plot = [x for x in range(63)]
+    electrodes_to_plot = [x for x in range(62)]
     index_dict = {}
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
-    tmin_crop = 360
-    tmax_crop = 420
+    tmin_crop = 390
+    tmax_crop = 550
     # # tmax_crop = 130
     cropped_data = crop_data(raw, tmin_crop, tmax_crop)
     # view_data(cropped_data)
