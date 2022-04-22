@@ -34,6 +34,6 @@ output "get_data_api_key" {
 }
 
 output "participant_data_bucket" {
-  value     = aws_s3_bucket.participant_data_bucket.name
+  value     = aws_s3_bucket.participant_data_bucket.arn
   sensitive = true
 }
