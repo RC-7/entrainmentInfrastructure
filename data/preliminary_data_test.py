@@ -1,4 +1,5 @@
 import math
+import time
 
 from numpy import genfromtxt
 import matplotlib.pyplot as plt
@@ -732,7 +733,7 @@ def plot_blinks(raw_data, window):
             f = lambda x: np.abs(x - mean_value_fp1)
             displacement = f(raw_data[index_fp1])
             for i in range(len(displacement)):
-                if displacement[i] > mean_value_fp1 + 2 * std_div_fp1:
+                if np.max(displacement) > mean_value_fp1 + 3 * std_div_fp1:
                     eb_start = i - 200
                     eb_index_low = current_window_low + eb_start
                     eb_index_high = eb_index_low + 512
@@ -839,11 +840,10 @@ def get_eog_template_raw(raw_data, window):
     # return [eb_templates[max_correl], eb_templates[second_max]]
 
 
-
 def get_sd(previous_iteration, current_iteration):
     sd = 0
     for i in range(len(previous_iteration)):
-        sd += ((previous_iteration[i]-current_iteration[i]) ** 2) / ((previous_iteration[i])**2)
+        sd += ((previous_iteration[i] - current_iteration[i]) ** 2) / ((previous_iteration[i]) ** 2)
     return sd
 
 
@@ -854,7 +854,7 @@ def get_next_imf(x, sd_thresh=0.2):
     while continue_sift:
         upper_env = emd.sift.interp_envelope(sifting_signal, mode='upper')
         lower_env = emd.sift.interp_envelope(sifting_signal, mode='lower')
-        avg_env = (upper_env+lower_env) / 2
+        avg_env = (upper_env + lower_env) / 2
 
         tmp = sifting_signal - avg_env
 
@@ -897,13 +897,19 @@ def cross_correlate(signal1, signal2):
 
     for i in range(len(signal1)):
         numerator += signal1[i] * signal2[i]
-        s1_sq_sum += signal1[i]**2
-        s2_sq_sum += signal2[i]**2
+        s1_sq_sum += signal1[i] ** 2
+        s2_sq_sum += signal2[i] ** 2
     denominator = math.sqrt(s1_sq_sum) * math.sqrt(s2_sq_sum)
 
     cross_correlation_coefficient = numerator / denominator
     return cross_correlation_coefficient
 
+
+def save_hdfs5(filename, data):
+    hf = h5py.File(filename, 'a')
+    dataset_name = 'raw_data'
+    hf.create_dataset(dataset_name, data=data, chunks=True, maxshape=(None, len(data[0])))
+    hf.close()
 
 def remove_blinks_cca(raw_data, blink_template, testing=False):
     window = len(blink_template)
@@ -911,62 +917,75 @@ def remove_blinks_cca(raw_data, blink_template, testing=False):
     max_sample = len(raw_data[:, 0])
     print(max_sample)
     current_window_low = 0
-    sliding_iter = 50   # Edit me for optimisation
+    sliding_iter = 50  # Edit me for optimisation
     blink_found = False
     blink_counter = 0
+    tic = time.perf_counter()
     while current_window_low + window <= max_sample:
         index_electrode = np.index_exp[current_window_low:current_window_low + window, 0]
         if len(blink_template) != len(raw_data[index_electrode]):
-            print('here')
+            print('Blink template length mismatch')
             current_window_low += window
             continue
         correl = cross_correlate(raw_data[index_electrode], blink_template)
-        mean_value_fp1 = np.mean(raw_data[index_electrode])
-        std_div_fp1 = np.std(raw_data[index_electrode])
-        f = lambda x: np.abs(x - mean_value_fp1)
-        displacement = f(raw_data[index_electrode])
-        if correl > 0.5 and np.max(displacement) > mean_value_fp1 + 3 * std_div_fp1:
-            index_original = np.index_exp[current_window_low:current_window_low + window - 1, 0:63]
-            index_shifted = np.index_exp[current_window_low + 1:current_window_low + window, 0:63]
-            # Can play with tolerance to optimise for time
-            cca = CCA(n_components=10, scale=False, tol=1E-05, max_iter=500)
-            left_window = raw_data[index_original]
-            right_window = raw_data[index_shifted]
-            cca.fit(left_window, right_window)
-            x_c, y_c = cca.transform(left_window, right_window)
-            index_test = np.index_exp[:, 0]
-            x_c[index_test] = 0  # U matrix
-            blink_removed = cca.inverse_transform(x_c)  # Do something with me!
-            blink_counter += 1
-            if blink_counter == 4:
-                return
-            blink_found = True
+
+        if correl > 0.5:
+            mean_value_fp1 = np.mean(raw_data[index_electrode])
+            std_div_fp1 = np.std(raw_data[index_electrode])
+            f = lambda x: np.abs(x - mean_value_fp1)
+            displacement = f(raw_data[index_electrode])
+            if np.max(displacement) > mean_value_fp1 + 3 * std_div_fp1:
+                index_original = np.index_exp[current_window_low:current_window_low + window - 1, 0:63]
+                index_shifted = np.index_exp[current_window_low + 1:current_window_low + window, 0:63]
+                # Can play with tolerance to optimise for time
+                cca = CCA(n_components=10, scale=False, tol=1E-05, max_iter=500)
+                left_window = raw_data[index_original]
+                right_window = raw_data[index_shifted]
+                cca.fit(left_window, right_window)
+                x_c, y_c = cca.transform(left_window, right_window)
+                index_test = np.index_exp[:, 0]
+                x_c[index_test] = 0  # U matrix
+                blink_removed = cca.inverse_transform(x_c)  # Do something with me!
+                raw_data[index_original] = blink_removed
+                raw_data = np.delete(raw_data, current_window_low + window, 0)
+                blink_counter += 1
+                blink_found = True
         if not blink_found:
             current_window_low += sliding_iter
         else:
             current_window_low += sliding_iter
             blink_found = False
+    toc = time.perf_counter()
+    elapsed = toc - tic
+    print(f'Blinks cleaned in data: {blink_counter}')
+    print(f"Cleaning {len(raw_data)/512}s of data took {elapsed:0.4f} seconds")
     electrodes_to_plot = [x for x in range(62)]
     index_dict = {}
-    # print(f'Blinks: {blink_counter}')
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
     if testing:
-        plot_filtered(raw_data, electrodes_to_plot, index_dict, same_axis=True, save=False,
-                    filename=f'zerod_blinks.png')
+        plot_filtered(raw_data, electrodes_to_plot, index_dict, same_axis=False, save=True,
+                      filename=f'removed_blinks.png')
+    return raw_data
+
+
 #     First pass will work with numpy array, not mne data
-def clean_CCA(raw_data):
+def clean_cca(raw_data, output_filename):
     window = SAMPLING_SPEED * 2
-    template_data = get_eog_template_raw(raw_data, window)
+    known_blink_data = crop_data(raw_data, 390, 450).get_data().transpose()
+    template_data = get_eog_template_raw(known_blink_data, window)
+    known_blink_data = None
     # fig, axs = plt.subplots(2)
     # axs[0].plot(template_data[0])
     # axs[1].plot(template_data[1])
-    # plot_blinks(raw_data, window)
     blink_template = get_eog_template_emd(template_data)
     # plt.subplots()
     # plt.plot(blink_template)
     # plt.show()
-    remove_blinks_cca(raw_data, blink_template, True)
+    data_to_clean = crop_data(raw_data, 100).get_data().transpose()
+    # plot_blinks(data_to_clean, window)
+    cleaned_data = remove_blinks_cca(data_to_clean, blink_template, False)
+    save_hdfs5(output_filename, cleaned_data)
 
 
 def main():
@@ -975,6 +994,7 @@ def main():
     ds_name = 'full_run'
     # # ds_name = 'eyes_closed_with_oculus'
     filename = f'custom_suite/Full_run/{ds_name}.h5'
+    output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
     # ds_name = 'H_e_c'
@@ -1004,9 +1024,9 @@ def main():
     tmin_crop = 390
     tmax_crop = 450
     # # tmax_crop = 130
-    cropped_data = crop_data(raw, tmin_crop, tmax_crop)
+    # cropped_data = crop_data(raw, tmin_crop, tmax_crop)
     # view_data(cropped_data)
-    clean_CCA(cropped_data.get_data().transpose())
+    clean_cca(raw, output_filename)
     # data = cropped_data.get_data().transpose()
     # test_psd(data, electrodes_to_plot, index_dict)
 
