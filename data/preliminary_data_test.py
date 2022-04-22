@@ -20,9 +20,9 @@ from sklearn.cross_decomposition import CCA
 import emd
 from sklearn.metrics import mean_squared_error
 
-ch_names = ['Fp1', 'Fp2', 'AF3', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
+ch_names = ['Fp1', 'Fpz', 'Fp2', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
             'CP5', 'CP3', 'CP1', 'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz', 'POz', 'Pz', 'CPz',
-            'Fpz', 'AF7', 'AF8', 'AF4', 'AFz', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
+            'AF3', 'AF7', 'AF8', 'AF4', 'AFz', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
             'Cz', 'C2', 'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'A1',
             'A2']
 eeg_bands = {'Delta': (0.5, 4),
@@ -915,38 +915,43 @@ def remove_blinks_cca(raw_data, blink_template, testing=False):
     blink_found = False
     blink_counter = 0
     while current_window_low + window <= max_sample:
-        for i in range(63):
-            index_electrode = np.index_exp[current_window_low:current_window_low + window, i]
-            if len(blink_template) != len(raw_data[index_electrode]):
-                print('here')
-                current_window_low += window
-                continue
-            correl = cross_correlate(raw_data[index_electrode], blink_template)
-            mean_value_fp1 = np.mean(raw_data[index_electrode])
-            std_div_fp1 = np.std(raw_data[index_electrode])
-            f = lambda x: np.abs(x - mean_value_fp1)
-            displacement = f(raw_data[index_electrode])
-            if correl > 0.5 and np.max(displacement) > mean_value_fp1 + 3 * std_div_fp1:
-                # if i == 0:
-                #     print('whoop')
-                #     print(correl)
-                #     blink_counter += 1
-                a1 = np.zeros(window)
-                raw_data[index_electrode] = a1
-                blink_found = True
+        index_electrode = np.index_exp[current_window_low:current_window_low + window, 0]
+        if len(blink_template) != len(raw_data[index_electrode]):
+            print('here')
+            current_window_low += window
+            continue
+        correl = cross_correlate(raw_data[index_electrode], blink_template)
+        mean_value_fp1 = np.mean(raw_data[index_electrode])
+        std_div_fp1 = np.std(raw_data[index_electrode])
+        f = lambda x: np.abs(x - mean_value_fp1)
+        displacement = f(raw_data[index_electrode])
+        if correl > 0.5 and np.max(displacement) > mean_value_fp1 + 3 * std_div_fp1:
+            index_original = np.index_exp[current_window_low:current_window_low + window - 1, 0:63]
+            index_shifted = np.index_exp[current_window_low + 1:current_window_low + window, 0:63]
+            cca = CCA(n_components=10)
+            left_window = raw_data[index_original]
+            right_window = raw_data[index_shifted]
+            cca.fit(left_window, right_window)
+            x_c, y_c = cca.transform(left_window, right_window)
+            index_test = np.index_exp[:, 0]
+            x_c[index_test] = 0  # U matrix
+            blink_removed = cca.inverse_transform(x_c)  # Do something with me!
+            blink_counter += 1
+            if blink_counter == 4:
+                return
+            blink_found = True
         if not blink_found:
             current_window_low += sliding_iter
         else:
             current_window_low += sliding_iter
             blink_found = False
-    # electrodes_to_plot = [0, 1, 3]
     electrodes_to_plot = [x for x in range(62)]
     index_dict = {}
     # print(f'Blinks: {blink_counter}')
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
     if testing:
-        plot_filtered(raw_data, electrodes_to_plot, index_dict, same_axis=False, save=True,
+        plot_filtered(raw_data, electrodes_to_plot, index_dict, same_axis=True, save=False,
                     filename=f'zerod_blinks.png')
 #     First pass will work with numpy array, not mne data
 def clean_CCA(raw_data):
@@ -955,7 +960,7 @@ def clean_CCA(raw_data):
     # fig, axs = plt.subplots(2)
     # axs[0].plot(template_data[0])
     # axs[1].plot(template_data[1])
-    plot_blinks(raw_data, window)
+    # plot_blinks(raw_data, window)
     blink_template = get_eog_template_emd(template_data)
     # plt.subplots()
     # plt.plot(blink_template)
@@ -996,7 +1001,7 @@ def main():
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
     tmin_crop = 390
-    tmax_crop = 550
+    tmax_crop = 450
     # # tmax_crop = 130
     cropped_data = crop_data(raw, tmin_crop, tmax_crop)
     # view_data(cropped_data)
