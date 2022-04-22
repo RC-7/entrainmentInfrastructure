@@ -2,7 +2,7 @@ import datetime
 import pygds
 import json
 import numpy as np
-
+import time
 from matplotlib import pyplot as plt
 from pygds import Scope
 from pygds import GDSError
@@ -15,7 +15,8 @@ DEFAULT_ELECTRODES = json.load(electrodes_file)['active_electrodes']
 
 SAMPLING_RATE = 512
 # Two minutes of samples
-INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 61440
+# INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 61440
+INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 512
 INTERMEDIATE_SECOND_WRITE_THRESHOLD = 120
 
 
@@ -48,6 +49,11 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
                          == self.eeg_device.SamplingRate]
         bandpass_filters = [x for x in self.eeg_device.GetBandpassFilters()[0] if x['SamplingRate']
                             == self.eeg_device.SamplingRate]
+        print('---------------------------------------')
+        print('Printing filter information for sampling rate')
+        print(notch_filters)
+        print(bandpass_filters)
+        print('---------------------------------------')
         channel_counter = 1
         if testing:
             self.eeg_device.InternalSignalGenerator.Enabled = True
@@ -55,7 +61,8 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         for ch in self.eeg_device.Channels:
             if channel_counter <= 64:
                 ch.Acquire = True
-                ch.BipolarChannel = 64
+                if channel_counter != 64:
+                    ch.BipolarChannel = 64
                 ch.NotchFilterIndex = notch_filters[0]['NotchFilterIndex']
                 # 'Order': 4 'LowerCutoffFrequency': 0.01, 'UpperCutoffFrequency': 100.0
                 ch.BandpassFilterIndex = bandpass_filters[10]['BandpassFilterIndex']
@@ -69,6 +76,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         return impedance_values
 
     def more(self, samples):
+        tic = time.perf_counter()
         if len(self.active_data) == 0:
             self.active_data = samples
         else:
@@ -82,7 +90,8 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             self.save_active_data_to_file(self.filename, options=options)
             self.active_data = []
             self.data_received_cycles -= INTERMEDIATE_SECOND_WRITE_THRESHOLD
-
+        toc = time.perf_counter()
+        print(f"Data handling thread tood: {toc - tic:0.4f} seconds")
         return len(self.active_data) / SAMPLING_RATE < self.data_received_cycles
 
     def get_scaling(self):
@@ -96,8 +105,8 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.active_data = []
         self.data_received_cycles = number_of_minutes * 60  # Minutes to number of sampling periods
         # Testing increasing first argument, will get half of a minute's worth of samples
-        self.eeg_device.GetData(self.eeg_device.SamplingRate, self.more)
         self.save_intermediate_data = save_intermediate_data
+        self.eeg_device.GetData(self.eeg_device.SamplingRate, self.more)
         self.filename = filename
         options = {
             'dataset_name': 'raw_data',
@@ -146,7 +155,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             'dataset_name': 'config',
             'keep_alive': False
         }
-        self.save_active_data_to_hdfs(filename=filename, options=options, data=config_to_write)
+        self.save_active_data_to_file(filename=filename, options=options, data=config_to_write)
 
     def save_impedance_to_dataset(self, filename):
         impedance_data = {'values': self.impedance_check(),
@@ -155,7 +164,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             'dataset_name': 'impedance',
             'keep_alive': False
         }
-        self.save_active_data_to_hdfs(filename=filename, options=options, data=impedance_data)
+        self.save_active_data_to_file(filename=filename, options=options, data=impedance_data)
 
     def print_all_device_info(self):
         print("Testing communication with the devices")
