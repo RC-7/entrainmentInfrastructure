@@ -928,7 +928,8 @@ def remove_blinks_cca(raw_data, blink_template, testing=False):
         if correl > 0.5 and np.max(displacement) > mean_value_fp1 + 3 * std_div_fp1:
             index_original = np.index_exp[current_window_low:current_window_low + window - 1, 0:63]
             index_shifted = np.index_exp[current_window_low + 1:current_window_low + window, 0:63]
-            cca = CCA(n_components=10)
+            # Can play with tolerance to optimise for time
+            cca = CCA(n_components=10, scale=False, tol=1E-05, max_iter=500)
             left_window = raw_data[index_original]
             right_window = raw_data[index_shifted]
             cca.fit(left_window, right_window)
