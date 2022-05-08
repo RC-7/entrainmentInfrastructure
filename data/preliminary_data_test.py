@@ -647,6 +647,10 @@ def remove_blinks(raw_data):
     return raw_data
 
 
+def moving_average(interval, window_size):
+    window = np.ones(int(window_size))/float(window_size)
+    return np.convolve(interval, window, 'same')
+
 def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None, plot_averaged=False):
     active_row = 0
     active_column = 0
@@ -674,7 +678,7 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
                     # if f[z] == 20:
                         alpha_values.append(abs_power[z, j])
                         # print(alpha_values)
-                ave_alpha = np.max(alpha_values)
+                ave_alpha = np.mean(alpha_values)
                 alpha_average_values.append(ave_alpha)
             # print(alpha_average_values)
             time_averaged = []
@@ -686,16 +690,19 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
                     end_index = len(alpha_average_values) - 1
                 values = alpha_average_values[j:end_index]
                 time_averaged.append(np.mean(values))
-            ax[active_row, active_column].plot(time_averaged)
+            ax[active_row, active_column].plot(time_averaged, 'o')
+            ma = moving_average(time_averaged, 20)
+            ax[active_row, active_column].plot(ma)
             # ax[active_row, active_column].plot(data_to_plot)
-            ax[active_row, active_column].set_title(ch_names[i])
+
             bottom, top = ax[active_row, active_column].get_ylim()
             if np.max(time_averaged) > 9:
                 ax[active_row, active_column].set(ylim=[bottom, 4])
         else:
-            ax[active_row, active_column].pcolormesh(t, f[6:], np.abs(Zxx[6:]), cmap='viridis', shading='gouraud')  # vmin=0, vmax=amp,
-            ax[active_row, active_column].set(ylim=[10, 30])
+            ax[active_row, active_column].pcolormesh(t, f[18:21], np.abs(Zxx[18:21]), cmap='viridis', shading='gouraud')  # vmin=0, vmax=amp,
+            # ax[active_row, active_column].set(ylim=[10, 30])
 
+        ax[active_row, active_column].set_title(ch_names[i])
         active_column += 1
         if active_column == column:
             active_row += 1
@@ -1163,7 +1170,7 @@ def main():
     # tmax_crop = len(raw_ica_removed.get_data()[0])/512
     # index_dict = {}
     # # raw_data.pick([ch_names[n] for n in range(0, 3)])
-    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='Beta_test_19-22.png', plot_averaged=True)
+    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='Beta_test_19-22_moving_average_mean_mean.png', plot_averaged=True)
     # stft_test(raw, electrodes_to_plot, index_dict, save=True, filename='me_test.png')
     # plot_band_changes(raw_ica_removed, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
     #                   filename='entrain_1000-1379s_ICA_removed_alpha_max_1s_fft.png')
