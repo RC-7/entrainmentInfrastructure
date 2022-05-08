@@ -19,13 +19,16 @@ from scipy.signal import stft
 import matplotlib.ticker as plticker
 from sklearn.cross_decomposition import CCA
 import emd
+import os
+
+os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 from sklearn.metrics import mean_squared_error
 
-ch_names = ['Fp1', 'Fpz', 'Fp2', 'F1', 'F3', 'F5', 'F7', 'FT7', 'FC5', 'FC3', 'FC1', 'C1', 'C3', 'C5', 'T7', 'TP7',
-            'CP5', 'CP3', 'CP1', 'P1', 'P3', 'P5', 'P7', 'P9', 'PO7', 'PO3', 'O1', 'Iz', 'Oz', 'POz', 'Pz', 'CPz',
-            'AF3', 'AF7', 'AF8', 'AF4', 'AFz', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT8', 'FC6', 'FC4', 'FC2', 'FCz',
-            'Cz', 'C2', 'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'A1',
-            'A2']
+ch_names = ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'F1', 'AF8', 'F7', 'F5', 'F3', 'AF4', 'Fz', 'F2', 'F4', 'F6', 'F8',
+            'FT7', 'FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'T7', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4',
+            'C6', 'T8', 'TP7', 'CP5', 'CP3', 'CP4', 'CPz', 'CP2', 'CP1', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1', 'Pz',
+            'P2', 'P4', 'P6', 'P8', 'PO7', 'PO3', 'POz', 'PO4', 'PO8', 'O1', 'Oz', 'O2', 'F9', 'F10', 'A1', 'A2']
+
 eeg_bands = {'Delta': (0.5, 4),
              'Theta': (4, 8),
              'Alpha': (8, 13),
@@ -387,7 +390,9 @@ def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_da
     info.set_montage('standard_1020')  # Will auto set channel names on real cap
     info['description'] = 'My custom dataset'
     raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
-    raw.filter(l_freq=1., h_freq=None)  # removing slow drifts
+    raw.filter(l_freq=1., h_freq=50)  # removing slow drifts
+    # raw.filter(l_freq=1., h_freq=None)  # removing slow drifts
+    # raw.filter(l_freq=8, h_freq=30)  # removing slow drifts
     return [raw, info]
 
 
@@ -642,8 +647,7 @@ def remove_blinks(raw_data):
     return raw_data
 
 
-def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None):
-    column = 0
+def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None, plot_averaged=False):
     active_row = 0
     active_column = 0
     [row, column] = get_subplot_dimensions(electrodes_to_plot)
@@ -655,12 +659,43 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
     for i in electrodes_to_plot:
         data_to_plot = data[np_slice_indexes[i]]
         # print(data_to_plot)
-        f, t, Zxx = signal.stft(data_to_plot, SAMPLING_SPEED, nperseg=SAMPLING_SPEED)
-        ax[active_row, active_column].pcolormesh(t, f, np.abs(Zxx), shading='gouraud')  # vmin=0, vmax=amp,
-        # ax[active_row, active_column].plot(data_to_plot)
-        ax[active_row, active_column].set_title(ch_names[i])
-        ax[active_row, active_column].set_title(ch_names[i])
-        ax[active_row, active_column].set(ylim=[6, 15])
+        samples_per_ft = 100
+        overlap = 10
+        f, t, Zxx = signal.stft(x=data_to_plot, fs=SAMPLING_SPEED, nperseg=samples_per_ft, noverlap=overlap, nfft=512)
+
+        if plot_averaged:
+            abs_power = np.abs(Zxx)
+            # Try averaging Zxx on it's own
+            alpha_average_values = []
+            for j in range(len(abs_power[0])):
+                alpha_values = []
+                for z in range(len(f)):
+                    if 22 >= f[z] >= 19:
+                    # if f[z] == 20:
+                        alpha_values.append(abs_power[z, j])
+                        # print(alpha_values)
+                ave_alpha = np.max(alpha_values)
+                alpha_average_values.append(ave_alpha)
+            # print(alpha_average_values)
+            time_averaged = []
+            window_averaging = 20
+            for j in range(0, len(alpha_average_values), window_averaging):
+                if j+window_averaging < len(alpha_average_values):
+                    end_index = j+window_averaging
+                else:
+                    end_index = len(alpha_average_values) - 1
+                values = alpha_average_values[j:end_index]
+                time_averaged.append(np.mean(values))
+            ax[active_row, active_column].plot(time_averaged)
+            # ax[active_row, active_column].plot(data_to_plot)
+            ax[active_row, active_column].set_title(ch_names[i])
+            bottom, top = ax[active_row, active_column].get_ylim()
+            if np.max(time_averaged) > 9:
+                ax[active_row, active_column].set(ylim=[bottom, 4])
+        else:
+            ax[active_row, active_column].pcolormesh(t, f[6:], np.abs(Zxx[6:]), cmap='viridis', shading='gouraud')  # vmin=0, vmax=amp,
+            ax[active_row, active_column].set(ylim=[10, 30])
+
         active_column += 1
         if active_column == column:
             active_row += 1
@@ -675,6 +710,47 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
         plt.savefig(filename)
         plt.close(fig)
 
+
+def alpha_band_stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None):
+    active_row = 0
+    active_column = 0
+    [row, column] = get_subplot_dimensions(electrodes_to_plot)
+    fig_size = 1 * len(electrodes_to_plot)
+    fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+    fig.tight_layout(pad=0.5)  # edit me when axis labels are added
+    fig.tight_layout(pad=1.5)  # edit me when axis labels are added
+    data = eeg_data.get_data().transpose()
+    for i in electrodes_to_plot:
+        data_to_plot = data[np_slice_indexes[i]]
+        # print(data_to_plot)
+        samples_per_ft = 1024
+        overlap = 100
+        f, t, Zxx = signal.stft(x=data_to_plot, fs=SAMPLING_SPEED, nperseg=samples_per_ft, noverlap=overlap)
+        abs_power = np.abs(Zxx)
+        band_values = []
+        # for j in range(len(abs_power)):
+
+        # print(Zxx)
+        print(len(abs_power))
+        print(len(abs_power[0]))
+        print(len(f))
+        ax[active_row, active_column].pcolormesh(t, f[11:], np.abs(Zxx[11:]), cmap='viridis', shading='gouraud')  # vmin=0, vmax=amp,
+        # ax[active_row, active_column].plot(data_to_plot)
+        ax[active_row, active_column].set_title(ch_names[i])
+        ax[active_row, active_column].set(ylim=[6, 50])
+        active_column += 1
+        if active_column == column:
+            active_row += 1
+            active_column = 0
+        # ax[active_row, active_column].title('STFT Magnitude')
+        # ax[active_row, active_column].ylabel('Frequency [Hz]')
+        # ax[active_row, active_column].xlabel('Time [sec]')
+    if not save:
+        plt.show()
+    else:
+        # plt.ioff()
+        plt.savefig(filename)
+        plt.close(fig)
 
 def crop_data(raw_data, tmin_crop=None, tmax_crop=None):
     data = raw_data.copy()
@@ -911,6 +987,7 @@ def save_hdfs5(filename, data):
     hf.create_dataset(dataset_name, data=data, chunks=True, maxshape=(None, len(data[0])))
     hf.close()
 
+
 def remove_blinks_cca(raw_data, blink_template, testing=False):
     window = len(blink_template)
     print(window)
@@ -958,7 +1035,7 @@ def remove_blinks_cca(raw_data, blink_template, testing=False):
     toc = time.perf_counter()
     elapsed = toc - tic
     print(f'Blinks cleaned in data: {blink_counter}')
-    print(f"Cleaning {len(raw_data)/512}s of data took {elapsed:0.4f} seconds")
+    print(f"Cleaning {len(raw_data) / 512}s of data took {elapsed:0.4f} seconds")
     electrodes_to_plot = [x for x in range(62)]
     index_dict = {}
     for i in electrodes_to_plot:
@@ -988,12 +1065,55 @@ def clean_cca(raw_data, output_filename):
     save_hdfs5(output_filename, cleaned_data)
 
 
+def morlet_tf(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None):
+    active_row = 0
+    active_column = 0
+    [row, column] = get_subplot_dimensions(electrodes_to_plot)
+    fig_size = 2 * len(electrodes_to_plot)
+    fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+    # fig.tight_layout(pad=0.5)  # edit me when axis labels are added
+    fig.tight_layout(pad=2)  # edit me when axis labels are added
+    data = eeg_data.get_data().transpose()
+    for i in electrodes_to_plot:
+        data_to_plot = data[np_slice_indexes[i]]
+        data_to_plot = data_to_plot[::2]
+        downsampling = SAMPLING_SPEED / 2
+        w = 6.
+        # freq = np.linspace(1, 50, 200)
+        freq = np.geomspace(5, 14, 5)
+        widths = w * downsampling / (2 * freq * np.pi)
+        cwtm = signal.cwt(data_to_plot, signal.morlet2, widths, w=w)
+        # print(len(np.abs(cwtm[:, ::100])))
+        # print(cwtm[:, ::100])
+        magnitudes = np.abs(cwtm[:, ::100])  # Maybe average instead ...
+        t = np.linspace(1, len(data_to_plot) / downsampling, len(magnitudes[0]))
+        pc = ax[active_row, active_column].pcolormesh(t, freq, magnitudes, cmap='viridis', shading='gouraud')
+        plt.colorbar(pc, ax=ax[active_row, active_column])
+        # ax[active_row, active_column].pcolormesh(t, f, np.abs(Zxx), shading='gouraud')  # vmin=0, vmax=amp,
+        # ax[active_row, active_column].plot(data_to_plot)
+        ax[active_row, active_column].set_title(ch_names[i])
+        active_column += 1
+        if active_column == column:
+            active_row += 1
+            active_column = 0
+        # ax[active_row, active_column].title('STFT Magnitude')
+        # ax[active_row, active_column].ylabel('Frequency [Hz]')
+        # ax[active_row, active_column].xlabel('Time [sec]')
+    if not save:
+        plt.show()
+    else:
+        # plt.ioff()
+        plt.savefig(filename)
+        plt.close(fig)
+
+
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'full_run'
+    ds_name = 'beta_pls'
     # # ds_name = 'eyes_closed_with_oculus'
-    filename = f'custom_suite/Full_run/{ds_name}.h5'
+    # filename = f'custom_suite/Full_run/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_Jasp/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1012,6 +1132,7 @@ def main():
     # # file_path = 'testData/sinTest.csv'
     # electrodes_to_plot = [0, 1, 2, 3, 4, 63]
     [raw, info] = generate_mne_raw_with_info(file_type, filename, patch_data=False, filter_data=False)
+    # view_data(raw)
     #
     # tmin_crop = 100
     # tmax_crop = 175
@@ -1021,12 +1142,17 @@ def main():
     index_dict = {}
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
-    tmin_crop = 390
-    tmax_crop = 450
+    tmin_crop = 500
+    tmax_crop = 550
     # # tmax_crop = 130
-    # cropped_data = crop_data(raw, tmin_crop, tmax_crop)
+    cropped_data = crop_data(raw, 40)
     # view_data(cropped_data)
-    clean_cca(raw, output_filename)
+    # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
+    #           filename='morlet_test_500-550s_collapsed_alpha.png')
+
+    # plot_band_changes(cropped_data, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
+    #                   filename='test_band_changes.png')
+    # clean_cca(raw, output_filename)
     # data = cropped_data.get_data().transpose()
     # test_psd(data, electrodes_to_plot, index_dict)
 
@@ -1035,12 +1161,10 @@ def main():
     # # # clean_mne_data_ica(raw)
     # tmin_crop = 0
     # tmax_crop = len(raw_ica_removed.get_data()[0])/512
-    # electrodes_to_plot = [x for x in range(62)]
     # index_dict = {}
     # # raw_data.pick([ch_names[n] for n in range(0, 3)])
-    # for i in electrodes_to_plot:
-    #     index_dict[i] = np.index_exp[:, i]
-    # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='full_run_no_clean_alpha.png')
+    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='Beta_test_19-22.png', plot_averaged=True)
+    # stft_test(raw, electrodes_to_plot, index_dict, save=True, filename='me_test.png')
     # plot_band_changes(raw_ica_removed, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
     #                   filename='entrain_1000-1379s_ICA_removed_alpha_max_1s_fft.png')
     # plot_sensor_locations(raw)
