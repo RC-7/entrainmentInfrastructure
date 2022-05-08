@@ -651,6 +651,7 @@ def moving_average(interval, window_size):
     window = np.ones(int(window_size))/float(window_size)
     return np.convolve(interval, window, 'same')
 
+
 def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None, plot_averaged=False):
     active_row = 0
     active_column = 0
@@ -662,25 +663,20 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
     data = eeg_data.get_data().transpose()
     for i in electrodes_to_plot:
         data_to_plot = data[np_slice_indexes[i]]
-        # print(data_to_plot)
         samples_per_ft = 100
         overlap = 10
         f, t, Zxx = signal.stft(x=data_to_plot, fs=SAMPLING_SPEED, nperseg=samples_per_ft, noverlap=overlap, nfft=512)
 
         if plot_averaged:
             abs_power = np.abs(Zxx)
-            # Try averaging Zxx on it's own
             alpha_average_values = []
             for j in range(len(abs_power[0])):
                 alpha_values = []
                 for z in range(len(f)):
                     if 22 >= f[z] >= 19:
-                    # if f[z] == 20:
                         alpha_values.append(abs_power[z, j])
-                        # print(alpha_values)
-                ave_alpha = np.mean(alpha_values)
+                ave_alpha = np.mean(alpha_values)   # Decide on what to use here
                 alpha_average_values.append(ave_alpha)
-            # print(alpha_average_values)
             time_averaged = []
             window_averaging = 20
             for j in range(0, len(alpha_average_values), window_averaging):
@@ -693,13 +689,12 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
             ax[active_row, active_column].plot(time_averaged, 'o')
             ma = moving_average(time_averaged, 20)
             ax[active_row, active_column].plot(ma)
-            # ax[active_row, active_column].plot(data_to_plot)
 
-            bottom, top = ax[active_row, active_column].get_ylim()
-            if np.max(time_averaged) > 9:
-                ax[active_row, active_column].set(ylim=[bottom, 4])
+            max_lim = np.std(time_averaged) + np.mean(time_averaged)
+            min_lim = np.mean(time_averaged) - np.std(time_averaged)
+            ax[active_row, active_column].set(ylim=[min_lim, max_lim])
         else:
-            ax[active_row, active_column].pcolormesh(t, f[18:21], np.abs(Zxx[18:21]), cmap='viridis', shading='gouraud')  # vmin=0, vmax=amp,
+            ax[active_row, active_column].pcolormesh(t, f[18:21], np.abs(Zxx[18:21]), cmap='viridis', shading='gouraud')
             # ax[active_row, active_column].set(ylim=[10, 30])
 
         ax[active_row, active_column].set_title(ch_names[i])
@@ -1117,10 +1112,10 @@ def morlet_tf(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'beta_pls'
+    ds_name = 'audio_eyes_closed'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_Jasp/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_J/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1170,7 +1165,7 @@ def main():
     # tmax_crop = len(raw_ica_removed.get_data()[0])/512
     # index_dict = {}
     # # raw_data.pick([ch_names[n] for n in range(0, 3)])
-    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='Beta_test_19-22_moving_average_mean_mean.png', plot_averaged=True)
+    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='J_alpha_eyes_closed_19-22.png', plot_averaged=True)
     # stft_test(raw, electrodes_to_plot, index_dict, save=True, filename='me_test.png')
     # plot_band_changes(raw_ica_removed, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
     #                   filename='entrain_1000-1379s_ICA_removed_alpha_max_1s_fft.png')
