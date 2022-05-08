@@ -13,7 +13,7 @@ my_config = Config(
     }
 )
 sqs = boto3.client('sqs', config = my_config)
-f = open('runnners/aws_resources.json')
+f = open('../runnners/aws_resources.json')
 aws_resources = json.load(f)
 queue_url = aws_resources['set_data_sqs_url']['value']
 
@@ -52,15 +52,15 @@ def main():
         'customEntrainment': {
             "visual": {
                 'colour': 'red',
-                'frequency': '500',
+                'frequency': '10',
                 },
             'audio': {
-                'baseFrequency': 'red',
-                'entrainmentFrequency': '500',
+                'baseFrequency': '450',
+                'entrainmentFrequency': '12',
                 },
             'neurofeedback': {
-                'redChannel': '81',
-                'greenChannel': '169'
+                'redChannel': '0',
+                'greenChannel': '0'
                 },
             },
         'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
