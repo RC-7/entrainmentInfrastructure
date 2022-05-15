@@ -1,6 +1,6 @@
 import math
 import time
-
+from collections import defaultdict
 from numpy import genfromtxt
 import matplotlib.pyplot as plt
 import numpy as np
@@ -664,13 +664,13 @@ def remove_blinks(raw_data):
 
 
 def moving_average(interval, window_size):
-    window = np.ones(int(window_size))/float(window_size)
+    window = np.ones(int(window_size)) / float(window_size)
     return np.convolve(interval, window, 'same')
 
 
 def re_reference_data(raw_data, np_slice_indexes):
     for i in range(63):
-        raw_data[np_slice_indexes[i]] = raw_data[np_slice_indexes[i]] + raw_data[np_slice_indexes[62]] -\
+        raw_data[np_slice_indexes[i]] = raw_data[np_slice_indexes[i]] + raw_data[np_slice_indexes[62]] - \
                                         raw_data[np_slice_indexes[63]]
     return raw_data
 
@@ -697,7 +697,7 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
                 for z in range(len(f)):
                     if 25 >= f[z] >= 22:
                         alpha_values.append(abs_power[z, j])
-                ave_alpha = np.mean(alpha_values)   # Decide on what to use here
+                ave_alpha = np.mean(alpha_values)  # Decide on what to use here
                 alpha_average_values.append(ave_alpha)
             time_averaged = []
             time_max = []
@@ -707,8 +707,8 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
             seventyth_percent = []
             window_averaging = 20
             for j in range(0, len(alpha_average_values), window_averaging):
-                if j+window_averaging < len(alpha_average_values):
-                    end_index = j+window_averaging
+                if j + window_averaging < len(alpha_average_values):
+                    end_index = j + window_averaging
                 else:
                     end_index = len(alpha_average_values) - 1
                 values = alpha_average_values[j:end_index]
@@ -760,6 +760,112 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
         plt.close(fig)
 
 
+def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None, plot_averaged=False):
+    active_row = 0
+    active_column = 0
+    ma_global = []
+    ma_modal_global = []
+    ma_std_global = []
+    ma_seventyth_global = []
+    data = eeg_data.get_data().transpose()
+    for i in electrodes_to_plot:
+        data_to_plot = data[np_slice_indexes[i]]
+        samples_per_ft = 100
+        overlap = 10
+        f, t, Zxx = signal.stft(x=data_to_plot, fs=SAMPLING_SPEED, nperseg=samples_per_ft, noverlap=overlap, nfft=512)
+        abs_power = np.abs(Zxx)
+        alpha_average_values = []
+        for j in range(len(abs_power[0])):
+            alpha_values = []
+            for z in range(len(f)):
+                if 25 >= f[z] >= 22:
+                    alpha_values.append(abs_power[z, j])
+            ave_alpha = np.mean(alpha_values)  # Decide on what to use here
+            alpha_average_values.append(ave_alpha)
+        time_averaged = []
+        time_max = []
+        time_min = []
+        one_std = []
+        modal_values = []
+        seventyth_percent = []
+        window_averaging = 20
+        for j in range(0, len(alpha_average_values), window_averaging):
+            if j + window_averaging < len(alpha_average_values):
+                end_index = j + window_averaging
+            else:
+                end_index = len(alpha_average_values) - 1
+            values = alpha_average_values[j:end_index]
+            time_averaged.append(np.mean(values))
+            one_std.append(np.mean(values) + np.std(values))
+            seventyth_percent.append(np.percentile(values, 70))
+            time_max.append(np.max(values))
+            time_min.append(np.min(values))
+            bins = np.linspace(0, np.max(values), 10)
+            indices = np.digitize(values, bins)
+            modal_index = mode(indices)
+            # print(modal_index)
+            modal_midpoint = (bins[modal_index[0]] + bins[modal_index[0] - 1]) / 2
+            modal_values.append(modal_midpoint[0])
+        ma = moving_average(time_averaged, 20)
+        ma_max = moving_average(time_max, 20)
+        ma_min = moving_average(time_min, 20)
+        ma_modal = moving_average(modal_values, 20)
+        ma_std = moving_average(one_std, 20)
+        ma_seventyth = moving_average(seventyth_percent, 20)
+        ma_global.append(ma)
+        ma_modal_global.append(ma_modal)
+        ma_std_global.append(ma_std)
+        ma_seventyth_global.append(ma_seventyth)
+
+    region_averaged_ma = defaultdict(list)
+    region_averaged_modal = defaultdict(list)
+    region_averaged_std = defaultdict(list)
+    region_averaged_seventyth = defaultdict(list)
+
+    for j in range(64):
+        region = ''.join([k for k in ch_names[j] if not k.isdigit()])
+        region_averaged_ma[region].append(ma_global[j])
+        region_averaged_modal[region].append(ma_modal_global[j])
+        region_averaged_std[region].append(ma_std_global[j])
+        region_averaged_seventyth[region].append(ma_seventyth_global[j])
+    keys = region_averaged_ma.keys()
+    [row, column] = get_subplot_dimensions(keys)
+    fig_size = 1 * len(keys)
+    fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+    fig.tight_layout(pad=0.5)  # edit me when axis labels are added
+    fig.tight_layout(pad=1.5)  # edit me when axis labels are added
+    for key in region_averaged_ma:
+        ma_avg = np.mean(region_averaged_ma[key], axis=0)
+        mode_avg = np.mean(region_averaged_modal[key], axis=0)
+        std_avg = np.mean(region_averaged_std[key], axis=0)
+        seventyth_avg = np.mean(region_averaged_seventyth[key], axis=0)
+        ax[active_row, active_column].plot(ma_avg, label='MA Mean')
+        ax[active_row, active_column].plot(mode_avg, label='MA Binned Mode')
+        ax[active_row, active_column].plot(std_avg, label='MA one std')
+        ax[active_row, active_column].plot(seventyth_avg, label='MA 70th')
+        ax[active_row, active_column].legend()
+        ax[active_row, active_column].set_title(key)
+        active_column += 1
+        if active_column == column:
+            active_row += 1
+            active_column = 0
+
+
+
+    # if active_column == column:
+    #     active_row += 1
+    #     active_column = 0
+    # ax[active_row, active_column].title('STFT Magnitude')
+    # ax[active_row, active_column].ylabel('Frequency [Hz]')
+    # ax[active_row, active_column].xlabel('Time [sec]')
+    if not save:
+        plt.show()
+    else:
+        # plt.ioff()
+        plt.savefig(filename)
+        plt.close(fig)
+
+
 def alpha_band_stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None):
     active_row = 0
     active_column = 0
@@ -783,7 +889,8 @@ def alpha_band_stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=Fa
         print(len(abs_power))
         print(len(abs_power[0]))
         print(len(f))
-        ax[active_row, active_column].pcolormesh(t, f[11:], np.abs(Zxx[11:]), cmap='viridis', shading='gouraud')  # vmin=0, vmax=amp,
+        ax[active_row, active_column].pcolormesh(t, f[11:], np.abs(Zxx[11:]), cmap='viridis',
+                                                 shading='gouraud')  # vmin=0, vmax=amp,
         # ax[active_row, active_column].plot(data_to_plot)
         ax[active_row, active_column].set_title(ch_names[i])
         ax[active_row, active_column].set(ylim=[6, 50])
@@ -800,6 +907,7 @@ def alpha_band_stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=Fa
         # plt.ioff()
         plt.savefig(filename)
         plt.close(fig)
+
 
 def crop_data(raw_data, tmin_crop=None, tmax_crop=None):
     data = raw_data.copy()
@@ -1159,10 +1267,10 @@ def morlet_tf(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'd_Beta'
+    ds_name = 'beta_pls'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_D/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_J/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1212,8 +1320,11 @@ def main():
     # tmax_crop = len(raw_ica_removed.get_data()[0])/512
     # index_dict = {}
     # # raw_data.pick([ch_names[n] for n in range(0, 3)])
-    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='D_beta_pls_test_Alpha_All.png',
-              plot_averaged=True)
+    # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='D_beta_pls_test_Beta_All.png',
+    #           plot_averaged=True)
+
+    stft_by_region(cropped_data, electrodes_to_plot, index_dict, save=True, filename='J_region_averaged.png',
+                   plot_averaged=True)
     # stft_test(raw, electrodes_to_plot, index_dict, save=True, filename='me_test.png')
     # plot_band_changes(raw_ica_removed, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
     #                   filename='entrain_1000-1379s_ICA_removed_alpha_max_1s_fft.png')
