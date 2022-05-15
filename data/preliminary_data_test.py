@@ -704,6 +704,7 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
             time_min = []
             one_std = []
             modal_values = []
+            seventyth_percent = []
             window_averaging = 20
             for j in range(0, len(alpha_average_values), window_averaging):
                 if j+window_averaging < len(alpha_average_values):
@@ -713,6 +714,7 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
                 values = alpha_average_values[j:end_index]
                 time_averaged.append(np.mean(values))
                 one_std.append(np.mean(values) + np.std(values))
+                seventyth_percent.append(np.percentile(values, 70))
                 time_max.append(np.max(values))
                 time_min.append(np.min(values))
                 bins = np.linspace(0, np.max(values), 10)
@@ -727,9 +729,11 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
             ma_min = moving_average(time_min, 20)
             ma_modal = moving_average(modal_values, 20)
             ma_std = moving_average(one_std, 20)
+            ma_seventyth = moving_average(seventyth_percent, 20)
             ax[active_row, active_column].plot(ma, label='MA Mean')
             ax[active_row, active_column].plot(ma_modal, label='MA Binned Mode')
             ax[active_row, active_column].plot(ma_std, label='MA one std')
+            ax[active_row, active_column].plot(ma_seventyth, label='MA 70th')
             ax[active_row, active_column].legend()
             # ax[active_row, active_column].plot(ma_min)
 
@@ -1155,10 +1159,10 @@ def morlet_tf(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'beta_test'
+    ds_name = 'd_Beta'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_S/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_D/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1208,7 +1212,7 @@ def main():
     # tmax_crop = len(raw_ica_removed.get_data()[0])/512
     # index_dict = {}
     # # raw_data.pick([ch_names[n] for n in range(0, 3)])
-    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='S_beta_pls_test_Beta_modal_22-25.png',
+    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='D_beta_pls_test_Alpha_All.png',
               plot_averaged=True)
     # stft_test(raw, electrodes_to_plot, index_dict, save=True, filename='me_test.png')
     # plot_band_changes(raw_ica_removed, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
