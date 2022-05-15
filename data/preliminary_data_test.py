@@ -9,6 +9,7 @@ from scipy import signal
 from scipy.signal import freqz
 from scipy.signal import correlate
 from scipy.stats import pearsonr
+from scipy.stats import mode
 from math import sqrt, ceil
 from numpy.fft import fft
 import mne
@@ -352,7 +353,7 @@ def get_data_from_filter_obscured(full_eeg_data):
     return scoped_data
 
 
-def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_data=False):
+def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_data=False, reference=False):
     if file_type == 'csv':
         full_eeg_data = get_data_csv(file_path)
         if patch_data:  # Completely breaks data, but needed for testing with current ds
@@ -379,6 +380,21 @@ def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_da
         else:
             samples = hf['raw_data']
             eeg_data = samples[()]
+            ref_electrode = 63
+            ave_ref = (eeg_data[:, 62] + eeg_data[:, 63]) / 2
+            if reference:
+                for i in range(64):
+                    # if i == ref_electrode:
+                    #     continue
+                    index = np.index_exp[:, i]
+                    # eeg_data[index] = eeg_data[index] - eeg_data[:, ref_electrode]
+                    eeg_data[index] = eeg_data[index] - ave_ref[:]
+            # eeg_data[:, 62] = eeg_data[:, 63] + eeg_data[:, 62]
+            # for i in range(64):
+            #     if i == 63:
+            #         continue
+            #     index = np.index_exp[:, i]
+            #     eeg_data[index] = eeg_data[index] + eeg_data[:, 63] - eeg_data[:, 62]
             # eeg_data = eeg_data[100*512:150*512, :]
 
     # print(len(eeg_data))
@@ -652,6 +668,13 @@ def moving_average(interval, window_size):
     return np.convolve(interval, window, 'same')
 
 
+def re_reference_data(raw_data, np_slice_indexes):
+    for i in range(63):
+        raw_data[np_slice_indexes[i]] = raw_data[np_slice_indexes[i]] + raw_data[np_slice_indexes[62]] -\
+                                        raw_data[np_slice_indexes[63]]
+    return raw_data
+
+
 def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None, plot_averaged=False):
     active_row = 0
     active_column = 0
@@ -666,18 +689,21 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
         samples_per_ft = 100
         overlap = 10
         f, t, Zxx = signal.stft(x=data_to_plot, fs=SAMPLING_SPEED, nperseg=samples_per_ft, noverlap=overlap, nfft=512)
-
         if plot_averaged:
             abs_power = np.abs(Zxx)
             alpha_average_values = []
             for j in range(len(abs_power[0])):
                 alpha_values = []
                 for z in range(len(f)):
-                    if 22 >= f[z] >= 19:
+                    if 25 >= f[z] >= 22:
                         alpha_values.append(abs_power[z, j])
                 ave_alpha = np.mean(alpha_values)   # Decide on what to use here
                 alpha_average_values.append(ave_alpha)
             time_averaged = []
+            time_max = []
+            time_min = []
+            one_std = []
+            modal_values = []
             window_averaging = 20
             for j in range(0, len(alpha_average_values), window_averaging):
                 if j+window_averaging < len(alpha_average_values):
@@ -686,15 +712,32 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
                     end_index = len(alpha_average_values) - 1
                 values = alpha_average_values[j:end_index]
                 time_averaged.append(np.mean(values))
-            ax[active_row, active_column].plot(time_averaged, 'o')
+                one_std.append(np.mean(values) + np.std(values))
+                time_max.append(np.max(values))
+                time_min.append(np.min(values))
+                bins = np.linspace(0, np.max(values), 10)
+                indices = np.digitize(values, bins)
+                modal_index = mode(indices)
+                # print(modal_index)
+                modal_midpoint = (bins[modal_index[0]] + bins[modal_index[0] - 1]) / 2
+                modal_values.append(modal_midpoint[0])
+            ax[active_row, active_column].plot(time_averaged, 'o', label='Raw Mean')
             ma = moving_average(time_averaged, 20)
-            ax[active_row, active_column].plot(ma)
+            ma_max = moving_average(time_max, 20)
+            ma_min = moving_average(time_min, 20)
+            ma_modal = moving_average(modal_values, 20)
+            ma_std = moving_average(one_std, 20)
+            ax[active_row, active_column].plot(ma, label='MA Mean')
+            ax[active_row, active_column].plot(ma_modal, label='MA Binned Mode')
+            ax[active_row, active_column].plot(ma_std, label='MA one std')
+            ax[active_row, active_column].legend()
+            # ax[active_row, active_column].plot(ma_min)
 
-            max_lim = np.std(time_averaged) + np.mean(time_averaged)
+            max_lim = 2 * np.std(time_averaged) + np.mean(time_averaged)
             min_lim = np.mean(time_averaged) - np.std(time_averaged)
-            ax[active_row, active_column].set(ylim=[min_lim, max_lim])
+            # ax[active_row, active_column].set(ylim=[min_lim, max_lim])
         else:
-            ax[active_row, active_column].pcolormesh(t, f[18:21], np.abs(Zxx[18:21]), cmap='viridis', shading='gouraud')
+            ax[active_row, active_column].pcolormesh(t, f[5:31], np.abs(Zxx[5:31]), cmap='viridis', shading='gouraud')
             # ax[active_row, active_column].set(ylim=[10, 30])
 
         ax[active_row, active_column].set_title(ch_names[i])
@@ -1112,10 +1155,10 @@ def morlet_tf(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'audio_eyes_closed'
+    ds_name = 'beta_test'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_J/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_S/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1133,21 +1176,21 @@ def main():
     # # file_path = 'custom_suite/one_minute_half_fixed.csv'
     # # file_path = 'testData/sinTest.csv'
     # electrodes_to_plot = [0, 1, 2, 3, 4, 63]
-    [raw, info] = generate_mne_raw_with_info(file_type, filename, patch_data=False, filter_data=False)
+    [raw, info] = generate_mne_raw_with_info(file_type, filename, patch_data=False, filter_data=False, reference=True)
     # view_data(raw)
     #
     # tmin_crop = 100
     # tmax_crop = 175
 
     # ica_data = remove_blinks(raw)
-    electrodes_to_plot = [x for x in range(62)]
+    electrodes_to_plot = [x for x in range(64)]
     index_dict = {}
     for i in electrodes_to_plot:
         index_dict[i] = np.index_exp[:, i]
     tmin_crop = 500
     tmax_crop = 550
     # # tmax_crop = 130
-    cropped_data = crop_data(raw, 40)
+    cropped_data = crop_data(raw, 60)
     # view_data(cropped_data)
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
     #           filename='morlet_test_500-550s_collapsed_alpha.png')
@@ -1165,7 +1208,8 @@ def main():
     # tmax_crop = len(raw_ica_removed.get_data()[0])/512
     # index_dict = {}
     # # raw_data.pick([ch_names[n] for n in range(0, 3)])
-    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='J_alpha_eyes_closed_19-22.png', plot_averaged=True)
+    stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='S_beta_pls_test_Beta_modal_22-25.png',
+              plot_averaged=True)
     # stft_test(raw, electrodes_to_plot, index_dict, save=True, filename='me_test.png')
     # plot_band_changes(raw_ica_removed, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
     #                   filename='entrain_1000-1379s_ICA_removed_alpha_max_1s_fft.png')
