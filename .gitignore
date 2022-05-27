@@ -60,5 +60,4 @@ Vagrantfile
 __pycache__
 *.h5
 *.png
-data/
-data/**/*.py
+data/**/
