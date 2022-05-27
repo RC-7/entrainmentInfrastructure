@@ -14,10 +14,9 @@ electrodes_file = open('constants/electrodes.json')
 DEFAULT_ELECTRODES = json.load(electrodes_file)['active_electrodes']
 
 SAMPLING_RATE = 512
-# Two minutes of samples
-# INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 61440
-INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 512
-INTERMEDIATE_SECOND_WRITE_THRESHOLD = 120
+# Twenty seconds of samples saved at a time
+INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 512*10
+INTERMEDIATE_SECOND_WRITE_THRESHOLD = 20
 
 
 def create_active_electrode_bool_array(active_electrode_numbers):
@@ -40,6 +39,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.hdfs5_interface = HDFS5FileInterface(self.filename)
 
     def configure(self, testing):
+        # From reference doc
         self.eeg_device.HoldEnabled = 0
         all_sampling_rates = sorted(self.eeg_device.GetSupportedSamplingRates()[0].items())
         f_s_2 = all_sampling_rates[1]
@@ -50,9 +50,16 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         bandpass_filters = [x for x in self.eeg_device.GetBandpassFilters()[0] if x['SamplingRate']
                             == self.eeg_device.SamplingRate]
         print('---------------------------------------')
-        print('Printing filter information for sampling rate')
-        print(notch_filters)
-        print(bandpass_filters)
+        # print('Printing filter information for sampling rate')
+        # print(notch_filters)
+        # print(bandpass_filters)
+        print('Printing sampling rate')
+        print(all_sampling_rates)
+        print('Printing sampling value')
+        print(self.eeg_device.GetSupportedSamplingRates())
+        # Test me
+        # self.eeg_device.NumberOfScans_calc()
+        print(self.eeg_device.DeviceType)
         print('---------------------------------------')
         channel_counter = 1
         if testing:
@@ -61,14 +68,15 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         for ch in self.eeg_device.Channels:
             if channel_counter <= 64:
                 ch.Acquire = True
-                if channel_counter != 64:
-                    ch.BipolarChannel = 64
+                ch.BipolarChannel = 0
                 ch.NotchFilterIndex = notch_filters[0]['NotchFilterIndex']
-                # 'Order': 4 'LowerCutoffFrequency': 0.01, 'UpperCutoffFrequency': 100.0
-                ch.BandpassFilterIndex = bandpass_filters[10]['BandpassFilterIndex']
+                # 'Order': 8 'LowerCutoffFrequency': 0.01, 'UpperCutoffFrequency': 100.0
+                ch.BandpassFilterIndex = bandpass_filters[14]['BandpassFilterIndex']
                 channel_counter += 1
             else:
                 ch.Acquire = False
+
+        print(self.eeg_device.Channels())
         self.eeg_device.SetConfiguration()
 
     def impedance_check(self):
@@ -87,12 +95,15 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
                 'dataset_name': 'raw_data',
                 'keep_alive': True
             }
+            print(len(self.active_data))
+            print(len(self.active_data[0]))
             self.save_active_data_to_file(self.filename, options=options)
             self.active_data = []
             self.data_received_cycles -= INTERMEDIATE_SECOND_WRITE_THRESHOLD
         toc = time.perf_counter()
         print(f"Data handling thread tood: {toc - tic:0.4f} seconds")
-        return len(self.active_data) / SAMPLING_RATE < self.data_received_cycles
+        print(self.data_received_cycles)
+        return self.data_received_cycles > 0
 
     def get_scaling(self):
         scaling = self.eeg_device.GetScaling()
@@ -106,13 +117,14 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.data_received_cycles = number_of_minutes * 60  # Minutes to number of sampling periods
         # Testing increasing first argument, will get half of a minute's worth of samples
         self.save_intermediate_data = save_intermediate_data
-        self.eeg_device.GetData(self.eeg_device.SamplingRate, self.more)
         self.filename = filename
+        self.eeg_device.GetData(self.eeg_device.SamplingRate, self.more)
         options = {
             'dataset_name': 'raw_data',
             'keep_alive': False
         }
-        self.save_active_data_to_file(self.filename, options=options)
+        # self.save_active_data_to_file(self.filename, options=options)
+        self.hdfs5_interface.close_file()
         self.active_data = []
         self.save_intermediate_data = False
         self.filename = ''
