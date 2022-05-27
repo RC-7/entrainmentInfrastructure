@@ -1398,10 +1398,10 @@ def morlet_tf_region_averged(eeg_data, electrodes_to_plot, np_slice_indexes, sav
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'st_beta'
+    ds_name = 'A_Beta_pls'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_St/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_A/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1419,7 +1419,7 @@ def main():
     # # file_path = 'custom_suite/one_minute_half_fixed.csv'
     # # file_path = 'testData/sinTest.csv'
     # electrodes_to_plot = [0, 1, 2, 3, 4, 63]
-    [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='alpha')
+    [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=False, scope='beta')
     # view_data(raw)
     #
     # tmin_crop = 100
@@ -1436,7 +1436,7 @@ def main():
     cropped_data = crop_data(raw, 50)
     # view_data(cropped_data)
 
-    # correl_coeff_to_ref(cropped_data, electrodes_to_plot, index_dict, fs=SAMPLING_SPEED, ref='Cz')
+    # correl_coeff_to_ref(cropped_data, electrodes_to_plot, ref='Cz')
     correl_coeff_set(cropped_data)
 
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,

@@ -21,7 +21,6 @@ def setup_figure(list_of_figures):
     active_column = 0
     fig_size = 1 * len(list_of_figures)
     fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
-    fig.tight_layout(pad=0.5)  # edit me when axis labels are added
     fig.tight_layout(pad=1.5)  # edit me when axis labels are added
     return row, column, fig, ax
 
