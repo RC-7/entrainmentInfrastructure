@@ -10,7 +10,7 @@ from scipy.signal import freqz
 from scipy.signal import correlate
 from scipy.stats import pearsonr
 from scipy.stats import mode
-from math import sqrt, ceil
+
 from numpy.fft import fft
 import mne
 import matplotlib as mpl
@@ -21,6 +21,10 @@ import matplotlib.ticker as plticker
 from sklearn.cross_decomposition import CCA
 import emd
 import os
+import tensorpac
+from util import get_subplot_dimensions, moving_average
+
+from coherence_analysis import correl_coeff_to_ref, correl_coeff_set
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 from sklearn.metrics import mean_squared_error
@@ -98,17 +102,7 @@ def butter_highpass_filter(data, cutoff=0.001, fs=SAMPLING_SPEED, existing_filte
     return y
 
 
-def get_subplot_dimensions(electrodes_to_plot):
-    row = 0
-    column = 0
-    if np.abs((len(electrodes_to_plot) / 2) - 2) > 2:
-        sqrt_plots = sqrt(len(electrodes_to_plot))
-        row = ceil(sqrt_plots)
-        column = ceil(sqrt_plots)
-    else:
-        row = 2
-        column = ceil(len(electrodes_to_plot) / 2)
-    return [row, column]
+
 
 
 def plot_filtered(eeg_data, electrodes_to_plot, np_slice_indexes, same_axis=True, built_filter=None,
@@ -353,7 +347,7 @@ def get_data_from_filter_obscured(full_eeg_data):
     return scoped_data
 
 
-def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_data=False, reference=False):
+def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_data=False, reference=False, scope=''):
     if file_type == 'csv':
         full_eeg_data = get_data_csv(file_path)
         if patch_data:  # Completely breaks data, but needed for testing with current ds
@@ -408,7 +402,14 @@ def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_da
     info.set_montage('standard_1020')  # Will auto set channel names on real cap
     info['description'] = 'My custom dataset'
     raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
-    raw.filter(l_freq=1., h_freq=50)  # removing slow drifts
+    if scope == 'beta':
+        raw.filter(l_freq=20, h_freq=25)
+    elif scope == 'alpha':
+        raw.filter(l_freq=8, h_freq=13)
+    elif scope == 'theta':
+        raw.filter(l_freq=4, h_freq=8)
+    else:
+        raw.filter(l_freq=1., h_freq=50)
     # raw.filter(l_freq=1., h_freq=None)  # removing slow drifts
     # raw.filter(l_freq=8, h_freq=30)  # removing slow drifts
     return [raw, info]
@@ -664,10 +665,6 @@ def remove_blinks(raw_data):
     # view_data(raw_data)
     return raw_data
 
-
-def moving_average(interval, window_size):
-    window = np.ones(int(window_size)) / float(window_size)
-    return np.convolve(interval, window, 'same')
 
 
 def re_reference_data(raw_data, np_slice_indexes):
@@ -1401,10 +1398,10 @@ def morlet_tf_region_averged(eeg_data, electrodes_to_plot, np_slice_indexes, sav
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'beta_test'
+    ds_name = 'st_beta'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_S/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_St/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1422,7 +1419,7 @@ def main():
     # # file_path = 'custom_suite/one_minute_half_fixed.csv'
     # # file_path = 'testData/sinTest.csv'
     # electrodes_to_plot = [0, 1, 2, 3, 4, 63]
-    [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=False)
+    [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='alpha')
     # view_data(raw)
     #
     # tmin_crop = 100
@@ -1436,8 +1433,12 @@ def main():
     tmin_crop = 500
     tmax_crop = 550
     # # tmax_crop = 130
-    cropped_data = crop_data(raw, 0)
-    view_data(cropped_data)
+    cropped_data = crop_data(raw, 50)
+    # view_data(cropped_data)
+
+    # correl_coeff_to_ref(cropped_data, electrodes_to_plot, index_dict, fs=SAMPLING_SPEED, ref='Cz')
+    correl_coeff_set(cropped_data)
+
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
     #           filename='23-24HZ_ST_beta_Morlet.png')
 
