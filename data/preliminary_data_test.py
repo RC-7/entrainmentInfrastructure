@@ -383,6 +383,7 @@ def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_da
             ref_electrode = 63
             # eeg_data[:, 62] = eeg_data[:, 62] + eeg_data[:, 63]
             ave_ref = (eeg_data[:, 62] + eeg_data[:, 63]) / 2
+            # ave_ref = eeg_data[:, 63]
             if reference:
                 for i in range(64):
                     # if i == ref_electrode:
@@ -703,6 +704,7 @@ def extract_averages(raw_data_values, window_averaging=20):
         modal_values.append(modal_midpoint[0])
     return time_averaged, time_max, time_min, one_std, modal_values, seventyth_percent
 
+
 def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None, plot_averaged=False):
     active_row = 0
     active_column = 0
@@ -723,7 +725,8 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
             for j in range(len(abs_power[0])):
                 alpha_values = []
                 for z in range(len(f)):
-                    if 25 >= f[z] >= 22:
+                    if 26 >= f[z] >= 20:
+                    # if 13 >= f[z] >= 8:
                         alpha_values.append(abs_power[z, j])
                 ave_alpha = np.mean(alpha_values)  # Decide on what to use here
                 alpha_average_values.append(ave_alpha)
@@ -739,6 +742,9 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
                     end_index = j + window_averaging
                 else:
                     end_index = len(alpha_average_values) - 1
+                if j == end_index:
+                    j = len(alpha_average_values)
+                    continue
                 values = alpha_average_values[j:end_index]
                 time_averaged.append(np.mean(values))
                 one_std.append(np.mean(values) + np.std(values))
@@ -749,7 +755,7 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
                 indices = np.digitize(values, bins)
                 modal_index = mode(indices)
                 # print(modal_index)
-                modal_midpoint = (bins[modal_index[0]] + bins[modal_index[0] - 1]) / 2
+                modal_midpoint = (bins[modal_index[0] - 1] + bins[modal_index[0] - 2]) / 2
                 modal_values.append(modal_midpoint[0])
             ax[active_row, active_column].plot(time_averaged, 'o', label='Raw Mean')
             ma = moving_average(time_averaged, 20)
@@ -823,6 +829,9 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, f
                 end_index = j + window_averaging
             else:
                 end_index = len(alpha_average_values) - 1
+            if j == end_index:
+                print('its happening')
+                break
             values = alpha_average_values[j:end_index]
             time_averaged.append(np.mean(values))
             one_std.append(np.mean(values) + np.std(values))
@@ -833,7 +842,7 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, f
             indices = np.digitize(values, bins)
             modal_index = mode(indices)
             # print(modal_index)
-            modal_midpoint = (bins[modal_index[0]] + bins[modal_index[0] - 1]) / 2
+            modal_midpoint = (bins[modal_index[0] - 1] + bins[modal_index[0] - 2]) / 2
             modal_values.append(modal_midpoint[0])
         ma = moving_average(time_averaged, 20)
         ma_max = moving_average(time_max, 20)
@@ -1392,10 +1401,10 @@ def morlet_tf_region_averged(eeg_data, electrodes_to_plot, np_slice_indexes, sav
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'd_Beta'
+    ds_name = 'beta_test'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_D/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_S/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1413,7 +1422,7 @@ def main():
     # # file_path = 'custom_suite/one_minute_half_fixed.csv'
     # # file_path = 'testData/sinTest.csv'
     # electrodes_to_plot = [0, 1, 2, 3, 4, 63]
-    [raw, info] = generate_mne_raw_with_info(file_type, filename, patch_data=False, filter_data=False, reference=True)
+    [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=False)
     # view_data(raw)
     #
     # tmin_crop = 100
@@ -1427,10 +1436,10 @@ def main():
     tmin_crop = 500
     tmax_crop = 550
     # # tmax_crop = 130
-    cropped_data = crop_data(raw, 20)
-    # view_data(cropped_data)
-    morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
-              filename='23-24HZ_D_beta.png')
+    cropped_data = crop_data(raw, 0)
+    view_data(cropped_data)
+    # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
+    #           filename='23-24HZ_ST_beta_Morlet.png')
 
     # plot_band_changes(cropped_data, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
     #                   filename='test_band_changes.png')
@@ -1445,10 +1454,11 @@ def main():
     # tmax_crop = len(raw_ica_removed.get_data()[0])/512
     # index_dict = {}
     # # raw_data.pick([ch_names[n] for n in range(0, 3)])
-    # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename='D_beta_pls_test_Beta_All.png',
+    # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True,
+    #           filename='A_beta_Beta_20-26_no_ref.png',
     #           plot_averaged=True)
 
-    # stft_by_region(cropped_data, electrodes_to_plot, index_dict, save=True, filename='FR_region_averaged_reRefd_ALPHA.png',
+    # stft_by_region(cropped_data, electrodes_to_plot, index_dict, save=True, filename='ST_stft_by_region.png',
     #                plot_averaged=True)
     # stft_test(raw, electrodes_to_plot, index_dict, save=True, filename='me_test.png')
     # plot_band_changes(raw_ica_removed, tmin_crop, tmax_crop, electrodes_to_plot, index_dict, only_alpha=True, save=True,
