@@ -1419,7 +1419,7 @@ def main():
     # # file_path = 'custom_suite/one_minute_half_fixed.csv'
     # # file_path = 'testData/sinTest.csv'
     # electrodes_to_plot = [0, 1, 2, 3, 4, 63]
-    [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=False, scope='beta')
+    [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='beta')
     # view_data(raw)
     #
     # tmin_crop = 100
@@ -1433,11 +1433,12 @@ def main():
     tmin_crop = 500
     tmax_crop = 550
     # # tmax_crop = 130
-    cropped_data = crop_data(raw, 50)
-    # view_data(cropped_data)
+    # cropped_data = crop_data(raw, 93, 95)
+    cropped_data = crop_data(raw, 40)
+    view_data(cropped_data)
 
     # correl_coeff_to_ref(cropped_data, electrodes_to_plot, ref='Cz')
-    correl_coeff_set(cropped_data)
+    correl_coeff_set(cropped_data, method='coeff', time_sound=100)
 
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
     #           filename='23-24HZ_ST_beta_Morlet.png')

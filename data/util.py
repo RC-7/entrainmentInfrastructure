@@ -27,7 +27,10 @@ def setup_figure(list_of_figures):
 
 def moving_average(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
-    return np.convolve(interval, window, 'same')
+    ma = np.convolve(interval, window, 'same')
+    inaccurate_window = int(np.ceil(window_size/2))
+    ma = ma[inaccurate_window: -inaccurate_window]
+    return ma
 
 
 def figure_handling(fig, filename='', save_fig=False, ):
