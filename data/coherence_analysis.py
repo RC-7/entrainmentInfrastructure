@@ -125,8 +125,7 @@ def correl_coeff_set(raw_data, method='coeff', save_fig=False, filename='', time
     figure_handling(fig, filename, save_fig)
 
 
-def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='', time_sound=0,
-                        frequency=0):
+def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert'):
     raw_data = raw_data.get_data().transpose()
     max_sample = len(raw_data[:, 0])
     window = 1024
@@ -142,10 +141,9 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_fig
                 # Try for power too
                 analytic_signal = hilbert(raw_data[index_ch])
                 instantaneous_phase = np.unwrap(np.angle(analytic_signal))
-                instantaneous_phase_global[i].append(instantaneous_phase)
+                instantaneous_phase_global[i] = np.append(instantaneous_phase_global[i], instantaneous_phase.copy())
     plv_global = defaultdict(list)
     for i in instantaneous_phase_global.keys():
-        print(i)
         for j in instantaneous_phase_global.keys():
             if i == j:
                 continue
@@ -154,10 +152,33 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_fig
             mod_phase = f(phase_difference)
             complex_phase_diff = np.exp(np.complex(0, 1) * mod_phase)
             plv = []
-            for k in range(0, len(complex_phase_diff), 512):
-                plv.append(np.abs(np.sum(complex_phase_diff[k:512]) / 512))
+            trial_length = 512 * 5  # Look at me
+            for k in range(0, len(complex_phase_diff), trial_length):
+                plv.append(np.abs(np.sum(complex_phase_diff[k:k + trial_length]) / trial_length))
             key = f'{ch_names[i]}-{ch_names[j]}'
             plv_global[key] = plv
     return plv_global
 
 
+def degree(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='', plv=None):
+    if plv is None:
+        plv = phase_locking_value(raw_data, electrodes_to_plot, method=method)
+    active_row = 0
+    active_column = 0
+    row, column, fig, ax = setup_figure(electrodes_to_plot)
+    for i in range(len(electrodes_to_plot)):
+        electrode_phase_locking = []
+        for j in range(len(electrodes_to_plot)):
+            if i == j:
+                continue
+            key = f'{ch_names[i]}-{ch_names[j]}'
+            electrode_phase_locking.append(plv[key])
+        degree = np.sum(electrode_phase_locking, axis=0)
+        ma_degree = moving_average(degree, 20)
+        ax[active_row, active_column].plot(ma_degree)
+        ax[active_row, active_column].set_title(ch_names[i])
+        active_column += 1
+        if active_column == column:
+            active_row += 1
+            active_column = 0
+    figure_handling(fig, filename, save_fig)

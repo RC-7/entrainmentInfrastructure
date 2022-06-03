@@ -24,7 +24,7 @@ import os
 import tensorpac
 from util import get_subplot_dimensions, moving_average
 
-from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_locking_value
+from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_locking_value, degree
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 from sklearn.metrics import mean_squared_error
@@ -402,6 +402,8 @@ def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_da
     info.set_montage('standard_1020')  # Will auto set channel names on real cap
     info['description'] = 'My custom dataset'
     raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
+    if scope == 'beta_entrain':
+        raw.filter(l_freq=23, h_freq=25)
     if scope == 'beta':
         raw.filter(l_freq=20, h_freq=25)
     elif scope == 'alpha':
@@ -1419,7 +1421,7 @@ def main():
     # # file_path = 'custom_suite/one_minute_half_fixed.csv'
     # # file_path = 'testData/sinTest.csv'
     # electrodes_to_plot = [0, 1, 2, 3, 4, 63]
-    [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='beta')
+    [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='beta_entrain')
     # view_data(raw)
     #
     # tmin_crop = 100
@@ -1439,8 +1441,8 @@ def main():
 
     # correl_coeff_to_ref(cropped_data, electrodes_to_plot, ref='Cz')
     # correl_coeff_set(cropped_data, method='coeff', time_sound=100)
-    phase_locking_value(cropped_data, electrodes_to_plot)
-
+    # phase_locking_value(cropped_data, electrodes_to_plot)
+    degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='S_degree_23-25Hz')
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
     #           filename='23-24HZ_ST_beta_Morlet.png')
 
