@@ -7,6 +7,7 @@ from constants import ch_names, eeg_bands, SAMPLING_SPEED
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import coherence, get_window
+from scipy.signal import hilbert
 
 from util import get_subplot_dimensions, setup_figure, moving_average, figure_handling
 
@@ -82,7 +83,7 @@ def correl_coeff_set(raw_data, method='coeff', save_fig=False, filename='', time
                 continue
             if method == 'coeff':
                 correl = np.corrcoef(raw_data[index_ch], raw_data[index_cz])
-                correl = correl[0, 1]**2
+                correl = correl[0, 1] ** 2
             elif method == 'magSquared':
                 length_fft = 150
                 if length_fft > len(raw_data[index_cz]):
@@ -97,9 +98,9 @@ def correl_coeff_set(raw_data, method='coeff', save_fig=False, filename='', time
                 correl = np.mean(alpha_values)  # Decide on what to use here
             else:
                 correl = pearsonr(raw_data[index_ch], raw_data[index_cz])
-                correl = correl[0]**2
+                correl = correl[0] ** 2
             global_correl[set[2]].append(correl)
-            if current_window_low <= time_sound*SAMPLING_SPEED:
+            if current_window_low <= time_sound * SAMPLING_SPEED:
                 is_entrain[set[2]].append(0)
             else:
                 is_entrain[set[2]].append(1)
@@ -122,3 +123,41 @@ def correl_coeff_set(raw_data, method='coeff', save_fig=False, filename='', time
             active_row += 1
             active_column = 0
     figure_handling(fig, filename, save_fig)
+
+
+def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='', time_sound=0,
+                        frequency=0):
+    raw_data = raw_data.get_data().transpose()
+    max_sample = len(raw_data[:, 0])
+    window = 1024
+    instantaneous_phase_global = defaultdict(list)
+    for i in range(len(electrodes_to_plot)):
+        for current_window_low in range(0, max_sample, window):
+            index_ch = np.index_exp[current_window_low:current_window_low + window, i]
+            # Need to add logic here... maybe padd with zeros
+            # if (np.max(raw_data[index_ch]) - np.min(raw_data[index_ch])) > 110 or \
+            #         (np.max(raw_data[index_ch]) - np.min(raw_data[index_ch])) > 110:
+            #     continue
+            if method == 'hilbert':
+                # Try for power too
+                analytic_signal = hilbert(raw_data[index_ch])
+                instantaneous_phase = np.unwrap(np.angle(analytic_signal))
+                instantaneous_phase_global[i].append(instantaneous_phase)
+    plv_global = defaultdict(list)
+    for i in instantaneous_phase_global.keys():
+        print(i)
+        for j in instantaneous_phase_global.keys():
+            if i == j:
+                continue
+            phase_difference = np.subtract(instantaneous_phase_global[i], instantaneous_phase_global[j])
+            f = lambda x: x % 2 * np.pi
+            mod_phase = f(phase_difference)
+            complex_phase_diff = np.exp(np.complex(0, 1) * mod_phase)
+            plv = []
+            for k in range(0, len(complex_phase_diff), 512):
+                plv.append(np.abs(np.sum(complex_phase_diff[k:512]) / 512))
+            key = f'{ch_names[i]}-{ch_names[j]}'
+            plv_global[key] = plv
+    return plv_global
+
+
