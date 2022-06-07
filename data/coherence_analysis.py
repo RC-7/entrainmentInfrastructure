@@ -127,7 +127,7 @@ def correl_coeff_set(raw_data, method='coeff', save_fig=False, filename='', time
     figure_handling(fig, filename, save_fig)
 
 
-def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert'):
+def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save=False, filename=None):
     raw_data = raw_data.get_data().transpose()
     max_sample = len(raw_data[:, 0])
     window = 1024
@@ -159,6 +159,8 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert'):
                 plv.append(np.abs(np.sum(complex_phase_diff[k:k + trial_length]) / trial_length))
             key = f'{ch_names[i]}-{ch_names[j]}'
             plv_global[key] = plv
+    if save:
+        np.save(filename, plv_global)
     return plv_global
 
 
