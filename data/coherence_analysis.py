@@ -3,7 +3,7 @@ from collections import defaultdict
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_squared_error
 
-from constants import ch_names, eeg_bands, SAMPLING_SPEED
+from constants import ch_names, eeg_bands, SAMPLING_SPEED, ch_hemisphere
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import coherence, get_window
@@ -160,7 +160,8 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert'):
     return plv_global
 
 
-def degree(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='', plv=None):
+def degree(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='', plv=None,
+           inter_hemisphere=False):
     if plv is None:
         plv = phase_locking_value(raw_data, electrodes_to_plot, method=method)
     active_row = 0
@@ -170,6 +171,8 @@ def degree(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filen
         electrode_phase_locking = []
         for j in range(len(electrodes_to_plot)):
             if i == j:
+                continue
+            if inter_hemisphere and ch_hemisphere[ch_names[i]] == ch_hemisphere[ch_names[j]]:
                 continue
             key = f'{ch_names[i]}-{ch_names[j]}'
             electrode_phase_locking.append(plv[key])

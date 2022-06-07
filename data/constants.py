@@ -1,3 +1,5 @@
+from util import get_hemisphere
+
 ch_names = ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'F1', 'AF8', 'F7', 'F5', 'F3', 'AF4', 'Fz', 'F2', 'F4', 'F6', 'F8',
             'FT7', 'FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'T7', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4',
             'C6', 'T8', 'TP7', 'CP5', 'CP3', 'CP4', 'CPz', 'CP2', 'CP1', 'CP6', 'TP8', 'P7', 'P5', 'P3', 'P1', 'Pz',
@@ -10,3 +12,5 @@ eeg_bands = {'Delta': (0.5, 4),
              'Gamma': (30, 45)}
 
 SAMPLING_SPEED = 512
+
+ch_hemisphere = get_hemisphere(ch_names)

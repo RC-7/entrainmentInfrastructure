@@ -28,7 +28,7 @@ def setup_figure(list_of_figures):
 def moving_average(data, window_size):
     window = np.ones(int(window_size)) / float(window_size)
     ma = np.convolve(data, window, 'same')
-    inaccurate_window = int(np.ceil(window_size/2))
+    inaccurate_window = int(np.ceil(window_size / 2))
     ma = ma[inaccurate_window: -inaccurate_window]
     return ma
 
@@ -39,3 +39,16 @@ def figure_handling(fig, filename='', save_fig=False, ):
     else:
         plt.savefig(filename)
         plt.close(fig)
+
+
+def get_hemisphere(ch_names):
+    ch_hemisphere = {}
+    hemisphere = ['right', 'left']
+    ch: str
+    for ch in ch_names:
+        if not ch.isalpha():
+            hemisphere_index = int(ch[-1]) % 2
+            ch_hemisphere[ch] = hemisphere[hemisphere_index]
+        else:
+            ch_hemisphere[ch] = 'centre'
+    return ch_hemisphere

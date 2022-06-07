@@ -1400,10 +1400,10 @@ def morlet_tf_region_averged(eeg_data, electrodes_to_plot, np_slice_indexes, sav
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'beta_test'
+    ds_name = 'st_beta'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_S/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_St/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1442,7 +1442,8 @@ def main():
     # correl_coeff_to_ref(cropped_data, electrodes_to_plot, ref='Cz')
     # correl_coeff_set(cropped_data, method='coeff', time_sound=100)
     # phase_locking_value(cropped_data, electrodes_to_plot)
-    degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='S_degree_23-25Hz')
+    degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='St_degree_23-25Hz_inter',
+           inter_hemisphere=True)
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
     #           filename='23-24HZ_ST_beta_Morlet.png')
 
