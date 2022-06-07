@@ -182,7 +182,6 @@ def clustering_coefficient(raw_data, electrodes_to_plot, method='hilbert', save_
     active_column = 0
     for i in range(len(electrodes_to_plot)):
         cluster_single_electrode = clustering_coefficients_global[i, :]
-        print(len(cluster_single_electrode))
         ma_cluster = moving_average(cluster_single_electrode, 20)
         ax[active_row, active_column].plot(ma_cluster)
         ax[active_row, active_column].set_title(ch_names[i])
