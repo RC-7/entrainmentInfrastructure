@@ -174,7 +174,10 @@ def clustering_coefficient(raw_data, electrodes_to_plot, method='hilbert', save_
     for i in range(number_dp):
         for connection in plv.keys():
             nodes = connection.split('-')
-            electrode_graph.add_edge(nodes[0], nodes[1], weight=plv[connection][i])
+            if inter_hemisphere and ch_hemisphere[nodes[0]] == ch_hemisphere[nodes[1]]:
+                electrode_graph.add_edge(nodes[0], nodes[1], weight=0)
+            else:
+                electrode_graph.add_edge(nodes[0], nodes[1], weight=plv[connection][i])
         clustering_coefficients = list(nx.clustering(electrode_graph, weight='weight').values())
         clustering_coefficients_global[:, i] = clustering_coefficients
     row, column, fig, ax = setup_figure(electrodes_to_plot)

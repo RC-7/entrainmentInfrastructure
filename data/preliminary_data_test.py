@@ -1403,7 +1403,7 @@ def main():
     ds_name = 'beta_pls'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_J/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_Jasp/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1445,7 +1445,7 @@ def main():
     # degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='St_degree_23-25Hz_inter_absTest',
     #        inter_hemisphere=True)
     clustering_coefficient(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True,
-                           filename='Jas_cluster_23-25Hz', inter_hemisphere=True)
+                           filename='Jas_cluster_23-25Hz_inter', inter_hemisphere=True)
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
     #           filename='23-24HZ_ST_beta_Morlet.png')
 
