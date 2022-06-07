@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from scipy.signal import coherence, get_window
 from scipy.signal import hilbert
 
+import networkx as nx
+
 from util import get_subplot_dimensions, setup_figure, moving_average, figure_handling
 
 
@@ -159,6 +161,36 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert'):
             plv_global[key] = plv
     return plv_global
 
+
+def clustering_coefficient(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='', plv=None,
+                           inter_hemisphere=False):
+    if plv is None:
+        plv = phase_locking_value(raw_data, electrodes_to_plot, method=method)
+    number_dp = len(plv[f'{ch_names[0]}-{ch_names[1]}'])
+    clustering_coefficients_global = np.zeros((len(electrodes_to_plot), number_dp))
+    electrode_graph = nx.Graph()
+    for ch in range(len(electrodes_to_plot)):
+        electrode_graph.add_node(ch_names[ch])
+    for i in range(number_dp):
+        for connection in plv.keys():
+            nodes = connection.split('-')
+            electrode_graph.add_edge(nodes[0], nodes[1], weight=plv[connection][i])
+        clustering_coefficients = list(nx.clustering(electrode_graph, weight='weight').values())
+        clustering_coefficients_global[:, i] = clustering_coefficients
+    row, column, fig, ax = setup_figure(electrodes_to_plot)
+    active_row = 0
+    active_column = 0
+    for i in range(len(electrodes_to_plot)):
+        cluster_single_electrode = clustering_coefficients_global[i, :]
+        print(len(cluster_single_electrode))
+        ma_cluster = moving_average(cluster_single_electrode, 20)
+        ax[active_row, active_column].plot(ma_cluster)
+        ax[active_row, active_column].set_title(ch_names[i])
+        active_column += 1
+        if active_column == column:
+            active_row += 1
+            active_column = 0
+    figure_handling(fig, filename, save_fig)
 
 def degree(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='', plv=None,
            inter_hemisphere=False):

@@ -24,7 +24,7 @@ import os
 import tensorpac
 from util import get_subplot_dimensions, moving_average
 
-from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_locking_value, degree
+from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_locking_value, degree, clustering_coefficient
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 from sklearn.metrics import mean_squared_error
@@ -1442,8 +1442,10 @@ def main():
     # correl_coeff_to_ref(cropped_data, electrodes_to_plot, ref='Cz')
     # correl_coeff_set(cropped_data, method='coeff', time_sound=100)
     # phase_locking_value(cropped_data, electrodes_to_plot)
-    degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='St_degree_23-25Hz_inter',
-           inter_hemisphere=True)
+    # degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='St_degree_23-25Hz_inter_absTest',
+    #        inter_hemisphere=True)
+    clustering_coefficient(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True,
+                           filename='Jas_cluster_23-25Hz', inter_hemisphere=True)
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
     #           filename='23-24HZ_ST_beta_Morlet.png')
 
