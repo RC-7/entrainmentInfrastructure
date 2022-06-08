@@ -24,7 +24,7 @@ import os
 import tensorpac
 from util import get_subplot_dimensions, moving_average
 
-from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_locking_value, degree, clustering_coefficient
+from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_locking_value, degree, networkx_analysis
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 from sklearn.metrics import mean_squared_error
@@ -404,6 +404,10 @@ def generate_mne_raw_with_info(file_type, file_path, patch_data=False, filter_da
     raw = mne.io.RawArray(eeg_data.transpose()[0:64], info)
     if scope == 'beta_entrain':
         raw.filter(l_freq=23, h_freq=25)
+    if scope == 'alpha_entrain':
+        raw.filter(l_freq=10, h_freq=12)
+    if scope == 'theta_entrain':
+        raw.filter(l_freq=5, h_freq=7)
     if scope == 'beta':
         raw.filter(l_freq=20, h_freq=25)
     elif scope == 'alpha':
@@ -1400,10 +1404,10 @@ def morlet_tf_region_averged(eeg_data, electrodes_to_plot, np_slice_indexes, sav
 def main():
     # do_some_csv_analysis(patch=True)
     # filename = 'gtec/run_3.hdf5'
-    ds_name = 'beta_pls'
+    ds_name = 'A_Beta_pls'
     # # ds_name = 'eyes_closed_with_oculus'
     # filename = f'custom_suite/Full_run/{ds_name}.h5'
-    filename = f'custom_suite/Full_run_Jasp/{ds_name}.h5'
+    filename = f'custom_suite/Full_run_A/{ds_name}.h5'
     output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
     # do_some_hdfs5_analysis(filename, source='custom', saved_image=ds_name)
 
@@ -1442,10 +1446,11 @@ def main():
     # correl_coeff_to_ref(cropped_data, electrodes_to_plot, ref='Cz')
     # correl_coeff_set(cropped_data, method='coeff', time_sound=100)
     # phase_locking_value(cropped_data, electrodes_to_plot)
-    # degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='St_degree_23-25Hz_inter_absTest',
-    #        inter_hemisphere=True)
-    clustering_coefficient(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True,
-                           filename='Jas_cluster_23-25Hz_inter', inter_hemisphere=True)
+    # degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='Jasp_5-7',
+    #        inter_hemisphere=False)
+    # plv = np.load('./D_23-25Hz.npy', allow_pickle=True).item()
+    networkx_analysis(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, plv=None,
+                           filename='A_between_23-25Hz', inter_hemisphere=False, metric='betweenness')
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
     #           filename='23-24HZ_ST_beta_Morlet.png')
 

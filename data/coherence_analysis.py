@@ -127,7 +127,7 @@ def correl_coeff_set(raw_data, method='coeff', save_fig=False, filename='', time
     figure_handling(fig, filename, save_fig)
 
 
-def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save=False, filename=None):
+def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=False, filename=None):
     raw_data = raw_data.get_data().transpose()
     max_sample = len(raw_data[:, 0])
     window = 1024
@@ -159,17 +159,18 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save=Fal
                 plv.append(np.abs(np.sum(complex_phase_diff[k:k + trial_length]) / trial_length))
             key = f'{ch_names[i]}-{ch_names[j]}'
             plv_global[key] = plv
-    if save:
+    if save_ds:
         np.save(filename, plv_global)
     return plv_global
 
 
-def clustering_coefficient(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='', plv=None,
-                           inter_hemisphere=False):
+def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='clustering', save_fig=False, filename='',
+                      plv=None, inter_hemisphere=False):
     if plv is None:
-        plv = phase_locking_value(raw_data, electrodes_to_plot, method=method)
+        plv_filename = f'{filename.split("_")[0]}_plv'
+        plv = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True, filename=filename)
     number_dp = len(plv[f'{ch_names[0]}-{ch_names[1]}'])
-    clustering_coefficients_global = np.zeros((len(electrodes_to_plot), number_dp))
+    metric_values_global = np.zeros((len(electrodes_to_plot), number_dp))
     electrode_graph = nx.Graph()
     for ch in range(len(electrodes_to_plot)):
         electrode_graph.add_node(ch_names[ch])
@@ -180,13 +181,18 @@ def clustering_coefficient(raw_data, electrodes_to_plot, method='hilbert', save_
                 electrode_graph.add_edge(nodes[0], nodes[1], weight=0)
             else:
                 electrode_graph.add_edge(nodes[0], nodes[1], weight=plv[connection][i])
-        clustering_coefficients = list(nx.clustering(electrode_graph, weight='weight').values())
-        clustering_coefficients_global[:, i] = clustering_coefficients
+        if metric == 'clustering':
+            clustering_coefficients = list(nx.clustering(electrode_graph, weight='weight').values())
+            metric_values_global[:, i] = clustering_coefficients
+        elif metric == 'betweenness':
+            betweenness_coeffcicients = list(nx.betweenness_centrality(electrode_graph, normalized=True,
+                                                                       weight='weight').values())
+            metric_values_global[:, i] = betweenness_coeffcicients
     row, column, fig, ax = setup_figure(electrodes_to_plot)
     active_row = 0
     active_column = 0
     for i in range(len(electrodes_to_plot)):
-        cluster_single_electrode = clustering_coefficients_global[i, :]
+        cluster_single_electrode = metric_values_global[i, :]
         ma_cluster = moving_average(cluster_single_electrode, 20)
         ax[active_row, active_column].plot(ma_cluster)
         ax[active_row, active_column].set_title(ch_names[i])
