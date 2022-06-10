@@ -24,7 +24,7 @@ import os
 import tensorpac
 from util import get_subplot_dimensions, moving_average
 
-from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_locking_value, degree, networkx_analysis
+from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_locking_value, degree, networkx_analysis, small_world
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 from sklearn.metrics import mean_squared_error
@@ -1448,9 +1448,11 @@ def main():
     # phase_locking_value(cropped_data, electrodes_to_plot)
     # degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='Jasp_5-7',
     #        inter_hemisphere=False)
-    # plv = np.load('./D_23-25Hz.npy', allow_pickle=True).item()
-    networkx_analysis(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, plv=None,
-                           filename='A_between_23-25Hz', inter_hemisphere=False, metric='betweenness')
+    plv = np.load('./D_23-25Hz.npy', allow_pickle=True).item()
+    small_world(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='D_small_world_all',
+                plv=plv)
+    # networkx_analysis(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, plv=None,
+    #                        filename='A_between_23-25Hz', inter_hemisphere=False, metric='betweenness')
     # morlet_tf(cropped_data, electrodes_to_plot, index_dict, save=True,
     #           filename='23-24HZ_ST_beta_Morlet.png')
 

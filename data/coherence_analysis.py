@@ -164,10 +164,50 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=
     return plv_global
 
 
+def small_world(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='',
+                plv=None):
+    if plv is None:
+        plv = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True, filename=filename)
+    sigma_values = []
+    omega_values = []
+    electrode_graph = nx.Graph()
+    number_dp = len(plv[f'{ch_names[0]}-{ch_names[1]}'])
+    for ch in range(len(electrodes_to_plot)):
+        electrode_graph.add_node(ch_names[ch])
+    for i in range(0, number_dp, 10):
+        print(i)
+        plv_values = [plv[j][i] for j in plv.keys()]
+        medial_plv = np.median(plv_values)
+        std_plv = np.std(plv_values)
+        thresh = medial_plv + std_plv
+        for connection in plv.keys():
+            nodes = connection.split('-')
+            electrode_graph.add_edge(nodes[0], nodes[1], weight=plv[connection][i])
+        bad_conn_edges = list(filter(lambda e: e[2] < thresh,
+                                     (e for e in electrode_graph.edges.data('weight'))))
+        bad_conn_edges_ids = list(e[:2] for e in bad_conn_edges)
+        electrode_graph.remove_edges_from(bad_conn_edges_ids)
+
+        if electrode_graph.number_of_edges() > 1 and nx.is_connected(electrode_graph):
+            print(electrode_graph.number_of_edges())
+            sigma_values.append(nx.sigma(electrode_graph, niter=2, nrand=6))
+        else:
+            sigma_values.append(0)
+        # omega_values.append(nx.omega(electrode_graph, niter=2, nrand=3))
+        # print('omega done')
+    sigma_ma = moving_average(sigma_values, 20)
+    # omega_ma = moving_average(omega_values, 20)
+    fig, ax = plt.subplots()
+    ax.plot(sigma_values, marker='o')
+    ax.set_title('Sigma')
+    # ax[1].plot(omega_ma)
+    # ax[1].set_title('Omega')
+    figure_handling(fig, filename, save_fig)
+
+
 def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='clustering', save_fig=False, filename='',
                       plv=None, inter_hemisphere=False):
     if plv is None:
-        plv_filename = f'{filename.split("_")[0]}_plv'
         plv = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True, filename=filename)
     number_dp = len(plv[f'{ch_names[0]}-{ch_names[1]}'])
     metric_values_global = np.zeros((len(electrodes_to_plot), number_dp))
@@ -201,6 +241,7 @@ def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='cl
             active_row += 1
             active_column = 0
     figure_handling(fig, filename, save_fig)
+
 
 def degree(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='', plv=None,
            inter_hemisphere=False):
