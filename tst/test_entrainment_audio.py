@@ -6,7 +6,7 @@ plt.rcParams["figure.autolayout"] = True
 
 headers = ['frequency1', 'frequency2']
 
-df = pd.read_csv('test.csv', names=headers)
+df = pd.read_csv('testPink.csv', names=headers)
 
 df.plot()
 

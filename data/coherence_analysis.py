@@ -160,7 +160,8 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=
             key = f'{ch_names[i]}-{ch_names[j]}'
             plv_global[key] = plv
     if save_ds:
-        np.save(filename, plv_global)
+        ds_filename = f'PLV_dataset/{filename}'
+        np.save(ds_filename, plv_global)
     return plv_global
 
 
