@@ -12,7 +12,7 @@ def get_subplot_dimensions(electrodes_to_plot):
         sqrt_plots = sqrt(len(electrodes_to_plot))
         row = ceil(sqrt_plots)
         column = ceil(sqrt_plots)
-        if row * column - column > len(electrodes_to_plot):
+        if row * column - column >= len(electrodes_to_plot):
             row -= 1
     else:
         row = 2
