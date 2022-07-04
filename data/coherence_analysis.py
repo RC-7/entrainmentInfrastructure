@@ -163,7 +163,6 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=
             complex_phase_diff = np.exp(np.complex(0, 1) * mod_phase)
             plv = []
             trial_length = 512 * 5  # Look at me
-            # Make if ratio
             k_start = 0
             if ratio:
                 ref_plv = np.abs(np.sum(complex_phase_diff[0:SAMPLING_SPEED]) / SAMPLING_SPEED)
@@ -222,7 +221,7 @@ def small_world(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, 
 
 
 def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='clustering', save_fig=False, filename='',
-                      plv=None, inter_hemisphere=False, ratio=False, entrain_time=0):
+                      plv=None, inter_hemisphere=False, ratio=False, entrain_time=0, region_averaged=False):
     if plv is None:
         plv = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True, filename=filename,
                                   ratio=ratio)
@@ -245,9 +244,11 @@ def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='cl
             betweenness_coeffcicients = list(nx.betweenness_centrality(electrode_graph, normalized=True,
                                                                        weight='weight').values())
             metric_values_global[:, i] = betweenness_coeffcicients
-    row, column, fig, ax = setup_figure(electrodes_to_plot)
+    if not region_averaged:
+        row, column, fig, ax = setup_figure(electrodes_to_plot)
     active_row = 0
     active_column = 0
+    region_averaged_aggregate = defaultdict(list)
     for i in range(len(electrodes_to_plot)):
         cluster_single_electrode = metric_values_global[i, :]
         # Need to take into account trial averaging / summation in plv calc
@@ -255,14 +256,28 @@ def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='cl
             mean_resting = cluster_single_electrode[0]
             get_ratio = lambda v: v / mean_resting
             cluster_single_electrode = np.array([get_ratio(x) for x in cluster_single_electrode])
-
         ma_cluster = moving_average(cluster_single_electrode, 20)
-        ax[active_row, active_column].plot(ma_cluster)
-        ax[active_row, active_column].set_title(ch_names[i])
-        active_column += 1
-        if active_column == column:
-            active_row += 1
-            active_column = 0
+        if not region_averaged:
+            ax[active_row, active_column].plot(ma_cluster)
+            ax[active_row, active_column].set_title(ch_names[i])
+            active_column += 1
+            if active_column == column:
+                active_row += 1
+                active_column = 0
+        else:
+            region = ''.join([k for k in ch_names[i] if not k.isdigit()])
+            region_averaged_aggregate[region].append(ma_cluster)
+    if region_averaged:
+        print(region_averaged_aggregate.keys())
+        row, column, fig, ax = setup_figure(region_averaged_aggregate.keys())
+        for key in region_averaged_aggregate:
+            ma_avg = np.mean(region_averaged_aggregate[key], axis=0)
+            ax[active_row, active_column].plot(ma_avg)
+            ax[active_row, active_column].set_title(key)
+            active_column += 1
+            if active_column == column:
+                active_row += 1
+                active_column = 0
     figure_handling(fig, filename, save_fig)
 
 
