@@ -557,7 +557,7 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, f
     region_averaged_std = defaultdict(list)
     region_averaged_seventyth = defaultdict(list)
 
-    for j in range(64):
+    for j in range(62):
         region = ''.join([k for k in ch_names[j] if not k.isdigit()])
         region_averaged_ma[region].append(ma_global[j])
         region_averaged_modal[region].append(ma_modal_global[j])
