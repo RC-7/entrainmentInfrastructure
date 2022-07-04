@@ -12,17 +12,19 @@ def get_subplot_dimensions(electrodes_to_plot):
         sqrt_plots = sqrt(len(electrodes_to_plot))
         row = ceil(sqrt_plots)
         column = ceil(sqrt_plots)
+        if row * column - column > len(electrodes_to_plot):
+            row -= 1
     else:
         row = 2
         column = ceil(len(electrodes_to_plot) / 2)
     return [row, column]
 
 
-def setup_figure(list_of_figures):
+def setup_figure(list_of_figures, fig_size_modifier=1):
     [row, column] = get_subplot_dimensions(list_of_figures)
     active_row = 0
     active_column = 0
-    fig_size = 1 * len(list_of_figures)
+    fig_size = fig_size_modifier * len(list_of_figures)
     fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
     fig.tight_layout(pad=1.5)  # edit me when axis labels are added
     return row, column, fig, ax

@@ -110,11 +110,13 @@ def correl_coeff_set(raw_data, method='coeff', save_fig=False, filename='', time
     active_row = 0
     active_column = 0
 
-    row, column, fig, ax = setup_figure(set_positions)
+    row, column, fig, ax = setup_figure(set_positions, fig_size_modifier=2)
     ma_period = 30
     for key in global_correl:
         correl_ma = moving_average(global_correl[key], ma_period)
         if time_sound > 0:
+            if not correl_ma.any():
+                continue
             entrain_clipped = np.clip(is_entrain[key], np.min(correl_ma), np.max(correl_ma))
             is_entrain_ma = moving_average(entrain_clipped, ma_period)
             ax[active_row, active_column].plot(correl_ma)
@@ -124,10 +126,16 @@ def correl_coeff_set(raw_data, method='coeff', save_fig=False, filename='', time
         if active_column == column:
             active_row += 1
             active_column = 0
+    if active_column != 0:
+        for j in range(active_column, column):
+            fig.delaxes(ax[active_row, j])
+    if active_row < row -1:
+        for j in range(0, column):
+            fig.delaxes(ax[row - 1, j])
     figure_handling(fig, filename, save_fig)
 
 
-def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=False, filename=None):
+def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=False, filename=None, ratio=False):
     raw_data = raw_data.get_data().transpose()
     max_sample = len(raw_data[:, 0])
     window = 1024
@@ -155,7 +163,14 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=
             complex_phase_diff = np.exp(np.complex(0, 1) * mod_phase)
             plv = []
             trial_length = 512 * 5  # Look at me
-            for k in range(0, len(complex_phase_diff), trial_length):
+            # Make if ratio
+            k_start = 0
+            if ratio:
+                ref_plv = np.abs(np.sum(complex_phase_diff[0:SAMPLING_SPEED]) / SAMPLING_SPEED)
+                plv.append(ref_plv)
+                k_start = 512
+            for k in range(k_start, len(complex_phase_diff), trial_length):
+                # plv.append(np.abs(np.sum(complex_phase_diff[k:k + trial_length]) / (ref_plv * trial_length)))
                 plv.append(np.abs(np.sum(complex_phase_diff[k:k + trial_length]) / trial_length))
             key = f'{ch_names[i]}-{ch_names[j]}'
             plv_global[key] = plv
@@ -207,9 +222,10 @@ def small_world(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, 
 
 
 def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='clustering', save_fig=False, filename='',
-                      plv=None, inter_hemisphere=False):
+                      plv=None, inter_hemisphere=False, ratio=False, entrain_time=0):
     if plv is None:
-        plv = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True, filename=filename)
+        plv = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True, filename=filename,
+                                  ratio=ratio)
     number_dp = len(plv[f'{ch_names[0]}-{ch_names[1]}'])
     metric_values_global = np.zeros((len(electrodes_to_plot), number_dp))
     electrode_graph = nx.Graph()
@@ -234,6 +250,12 @@ def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='cl
     active_column = 0
     for i in range(len(electrodes_to_plot)):
         cluster_single_electrode = metric_values_global[i, :]
+        # Need to take into account trial averaging / summation in plv calc
+        if ratio:
+            mean_resting = cluster_single_electrode[0]
+            get_ratio = lambda v: v / mean_resting
+            cluster_single_electrode = np.array([get_ratio(x) for x in cluster_single_electrode])
+
         ma_cluster = moving_average(cluster_single_electrode, 20)
         ax[active_row, active_column].plot(ma_cluster)
         ax[active_row, active_column].set_title(ch_names[i])
