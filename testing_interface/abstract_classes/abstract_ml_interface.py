@@ -16,15 +16,15 @@ class AbstractMlInterface(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def create_model(self, update_information):
+    def create_model(self, model_name):
         pass
 
     @abstractmethod
-    def save_model(self):
+    def save_model(self, model_name):
         pass
 
     @abstractmethod
-    def load_model(self):
+    def load_model(self, model_path):
         pass
 
 
