@@ -48,7 +48,6 @@ class QLearningInterface(AbstractMlInterface):
         self.read_parameters(self.model_parameters)
 
         state_zeros = np.zeros(len(self.states))
-        state_zeros[0] = 1
         data = {}
         for action in self.actions:
             data[action] = state_zeros
