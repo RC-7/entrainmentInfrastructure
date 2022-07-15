@@ -37,6 +37,7 @@ class QLearningInterface(AbstractMlInterface):
                 interface to initialise model')
 
     def set_entrainment_DB_item(self, action):
+        print(f'updating entrainment to: {action}')
         data_type = 'EntrainmentSettings'
         data = {
         'participantID': self.participantID,
@@ -73,10 +74,15 @@ class QLearningInterface(AbstractMlInterface):
 
 # Pass in all EEG data to get new Q values and iterate entrainment
     def update_model_and_entrainment(self, data):
+        print('Updating Machine learning model')
         reward, state = self.analyser.get_features_and_reward(data)
         if self.current_index != '':
             new_state = state + '_' + self.current_entrainment
             self.bellmans(new_state, reward)
+            print('--------------------')
+            print('Updated Q Table')
+            print(self.model)
+            print('--------------------')
         self.update_entrainment(state)
 
 

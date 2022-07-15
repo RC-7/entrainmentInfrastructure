@@ -19,6 +19,8 @@ SAMPLING_RATE = 512
 INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 512*10
 INTERMEDIATE_SECOND_WRITE_THRESHOLD = 20
 
+ML_CONSIDERATION_THRESHOLD = SAMPLING_RATE * 60 * 3
+
 
 def create_active_electrode_bool_array(active_electrode_numbers):
     active_electrodes = []
@@ -46,6 +48,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
                                                 model_path='models/', model_name='bciAgent')
         # self.print_all_device_info()
         self.active_data = []
+        self.current_ml_data = []
         self.data_received_cycles = 0
         self.save_intermediate_data = False
         self.filename = ''
@@ -99,13 +102,21 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
     def more(self, samples):
         tic = time.perf_counter()
         # Do not save or consider filter start up
-        if self.filter_values < 30 * 60 * SAMPLING_RATE:
+        if self.filter_values < 40 * 60 * SAMPLING_RATE:
             self.filter_values += len(samples)
             return self.data_received_cycles > 0
         if len(self.active_data) == 0:
             self.active_data = samples
         else:
             self.active_data = np.append(self.active_data, samples, axis=0)
+        if len(self.current_ml_data) == 0:
+            self.current_ml_data = samples
+        else:
+            self.current_ml_data = np.append(self.current_ml_data, samples, axis=0)
+        if len(self.current_ml_data) >= ML_CONSIDERATION_THRESHOLD:
+            # Try to apply ML syncronously
+            self.q_learn_agent(self.current_ml_data)
+            self.current_ml_data = []
         # Every Two minutes write data in file to keep active memory low
         if self.save_intermediate_data and len(self.active_data) > INTERMEDIATE_SAMPLE_WRITE_THRESHOLD:
             options = {
