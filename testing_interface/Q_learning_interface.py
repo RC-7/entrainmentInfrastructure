@@ -33,8 +33,8 @@ class QLearningInterface(AbstractMlInterface):
                 interface to initialise model')
 
     def update_entrainment(self, state):
-        state_index = state + str(self.current_entrainment)
-        action = self.policy_function(state)
+        state_index = state + '_' + str(self.current_entrainment)
+        action = self.policy_function(state_index)
         self.current_entrainment = action
         date_type = 'EntrainmentSettings'
         data = {
@@ -74,6 +74,7 @@ class QLearningInterface(AbstractMlInterface):
         self.epsilon = self.model_parameters['epsilon']
         self.learning_rate = self.model_parameters['learning_rate']
         self.discount_factor = self.model_parameters['discount_factor']
+        self.step  = self.model_parameters['step']
 
     def get_parameters(self):
         model_parameters = {}
@@ -82,6 +83,7 @@ class QLearningInterface(AbstractMlInterface):
         model_parameters['epsilon'] = self.epsilon
         model_parameters['learning_rate'] = self.learning_rate
         model_parameters['discount_factor'] = self.discount_factor
+        model_parameters['step'] = self.step
         return model_parameters
 
     # Pass model perameters as a dict of state and action arrays
@@ -100,14 +102,24 @@ class QLearningInterface(AbstractMlInterface):
 
     def policy_function(self, state):
         rand_value = random()
-        
+        # force_explore = (self.model.loc[state].values == 0).any()
+
+        self.update_epsilon()
+        # TODO save action and if it was random 
         if rand_value < self.epsilon:
-            # TODO decide if want to ignore already explored actions
             action = choice(self.actions)
             return action
         else:
-            action = self.model.loc[state].idxmax(axis=1)
+            action = int(self.model.loc[state].idxmax(axis=1))
             return action
+
+    def update_epsilon(self):
+        n = 15
+        pinit = 1
+        pend = 0.15
+        r = max((n - self.step) / n, 0)
+        self.epsilon = (pinit - pend) * r + pend
+        self.step += 1
 
 
     def save_model(self):
