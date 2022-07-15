@@ -7,6 +7,7 @@ import datetime
 
 from abstract_classes.abstract_ml_interface import AbstractMlInterface
 from aws_messaging_interface import AWSMessagingInterface
+from analysis import Analysis
 
 
 class QLearningInterface(AbstractMlInterface):
@@ -17,6 +18,8 @@ class QLearningInterface(AbstractMlInterface):
         self.participantID = participantID
         self.base_entrainment_f = 370
         self.current_entrainment = '24'
+        self.current_index = ''
+        self.analyser = Analysis()
         #  TODO check 27 Hz
         self.entrainmentLookup = {
             '24': 21,
@@ -62,10 +65,14 @@ class QLearningInterface(AbstractMlInterface):
         # Commented for testing 
         # self.mi.send_data(date_type, data)
 
-    def update_model(self, action, new_state, data):
-        new_state_index = new_state + '_' + self.current_entrainment
-        
-        pass
+# Pass in all EEG data to get new Q values and iterate entrainment
+    def update_model_and_entrainment(self, data):
+        reward, state = self.analyser.get_features_and_reward(data)
+        new_state = state + '_' + self.current_entrainment
+        if self.current_index != '':
+            self.bellmans(new_state, reward)
+        self.update_entrainment(state)
+
 
     def bellmans(self, new_state, reward):
         Qs = self.model.loc[self.current_index][self.current_entrainment]
