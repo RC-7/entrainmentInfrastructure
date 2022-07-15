@@ -72,11 +72,11 @@ class Analysis():
         dy = np.diff(ma_avg)
         reward = len(dy[dy > 0])/ len(dy)
         print(f'reward: {reward}')
-
         if (ma_avg[-1] - ma_avg[0]) > 0:
             state = 'up'
         else:
             state = 'down'
+        print(state)
         return reward, state
 
 

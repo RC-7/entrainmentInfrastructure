@@ -110,8 +110,8 @@ class QLearningInterface(AbstractMlInterface):
         
         self.model = pd.DataFrame(data, index=self.states)
         print(self.model)
-        print(self.model.loc['up_24'][24])
-        print(self.model.loc['up_24'].idxmax(axis=1))
+        # print(self.model.loc['up_24'][24])
+        # print(self.model.loc['up_24'].idxmax(axis=1))
 
     def policy_function(self, state):
         rand_value = random()
