@@ -12,7 +12,7 @@ class AbstractMlInterface(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def update_model(self, update_information):
+    def update_model_and_entrainment(self, update_information):
         pass
 
     @abstractmethod
