@@ -52,6 +52,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.current_ml_data = []
         self.data_received_cycles = 0
         self.save_intermediate_data = False
+        self.use_ml = False
         self.filename = ''
         self.sampling_epochs = []
         self.hdfs5_interface = HDFS5FileInterface(self.filename)
@@ -111,20 +112,21 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             self.active_data = samples
         else:
             self.active_data = np.append(self.active_data, samples, axis=0)
-        if len(self.current_ml_data) == 0:
-            self.current_ml_data = samples
-        else:
-            self.current_ml_data = np.append(self.current_ml_data, samples, axis=0)
-        if len(self.current_ml_data) >= ML_CONSIDERATION_THRESHOLD:
-            # Try to apply ML syncronously
-            self.q_learn_agent.update_model_and_entrainment(self.current_ml_data)
+        if self.use_ml:
+            if len(self.current_ml_data) == 0:
+                self.current_ml_data = samples
+            else:
+                self.current_ml_data = np.append(self.current_ml_data, samples, axis=0)
+            if len(self.current_ml_data) >= ML_CONSIDERATION_THRESHOLD:
+                # Try to apply ML syncronously
+                self.q_learn_agent.update_model_and_entrainment(self.current_ml_data)
 
-            # If threadng is required
-            # agent_thread = Thread(target=self.q_learn_agent.update_model_and_entrainment,
-            # args=self.current_ml_data)
-            # agent_thread.start()
+                # If threadng is required
+                # agent_thread = Thread(target=self.q_learn_agent.update_model_and_entrainment,
+                # args=self.current_ml_data)
+                # agent_thread.start()
 
-            self.current_ml_data = []
+                self.current_ml_data = []
         # Every Two minutes write data in file to keep active memory low
         if self.save_intermediate_data and len(self.active_data) > INTERMEDIATE_SAMPLE_WRITE_THRESHOLD:
             self.sampling_epochs.append(str(datetime.datetime.now(datetime.timezone.utc)))
@@ -149,11 +151,14 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
     def set_scaling(self):
         pass
 
-    def get_data(self, number_of_minutes=1, save_intermediate_data=False, filename=''):
+    def get_data(self, number_of_minutes=1, save_intermediate_data=False, use_ml=True, filename=''):
         self.active_data = []
         self.data_received_cycles = number_of_minutes * 60  # Minutes to number of sampling periods
         # Testing increasing first argument, will get half of a minute's worth of samples
         self.save_intermediate_data = save_intermediate_data
+        self.use_ml = use_ml
+        if self.use_ml:
+            print(f'Using machine learning during run!!!')
         self.filename = filename
         self.eeg_device.GetData(self.eeg_device.SamplingRate, self.more)
         options = {
@@ -163,7 +168,8 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.save_data_hdfs(self.filename, options, data=self.sampling_epochs)
     
         self.hdfs5_interface.close_file()
-        self.q_learn_agent.save_model()
+        if self.use_ml:
+            self.q_learn_agent.save_model()
         self.active_data = []
         self.save_intermediate_data = False
         self.filename = ''
