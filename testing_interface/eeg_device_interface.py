@@ -160,6 +160,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         }
         # self.save_active_data_to_file(self.filename, options=options)
         self.hdfs5_interface.close_file()
+        self.q_learn_agent.save_model()
         self.active_data = []
         self.save_intermediate_data = False
         self.filename = ''
