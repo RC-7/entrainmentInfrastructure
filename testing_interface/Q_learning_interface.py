@@ -19,6 +19,8 @@ class QLearningInterface(AbstractMlInterface):
         self.base_entrainment_f = 370
         # Always start with a 24 Hz BB
         self.current_entrainment = '24'
+        self.epoched_file = 'epoch.csv'
+        self.actions_taken = pd.DataFrame()
         self.current_index = ''
         self.analyser = Analysis()
         #  TODO check 27 Hz
@@ -68,7 +70,12 @@ class QLearningInterface(AbstractMlInterface):
         self.current_entrainment = action
         self.current_index = state_index
         self.set_entrainment_DB_item(action)
-        # TODO save actions and results
+        epoched_values = {
+            'state': state,
+            'action': action,
+            'timestamp': str(datetime.datetime.now(datetime.timezone.utc))
+        }
+        self.actions_taken = self.actions_taken.append(epoched_values, ignore_index = True)
         print(action)
 
 
@@ -161,8 +168,11 @@ class QLearningInterface(AbstractMlInterface):
         parameters = self.get_parameters()
         with open(path_parameters, "w") as outfile:
             json.dump(parameters, outfile)
+        self.save_actions(path_model)
 
-
+    def save_actions(self, path_model):
+        actions_file = path_model + '_actions.csv'
+        self.actions_taken.to_csv(actions_file, index=False)
 
     def load_model(self):
         path = f'{self.model_path}'
