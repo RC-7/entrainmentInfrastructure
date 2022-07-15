@@ -17,6 +17,7 @@ class QLearningInterface(AbstractMlInterface):
         self.model_name = model_name
         self.participantID = participantID
         self.base_entrainment_f = 370
+        # Always start with a 24 Hz BB
         self.current_entrainment = '24'
         self.current_index = ''
         self.analyser = Analysis()
@@ -35,13 +36,8 @@ class QLearningInterface(AbstractMlInterface):
             raise Exception('Not enough parameters passed to Q learning \
                 interface to initialise model')
 
-    def update_entrainment(self, state):
-        # Has last action and persists it
-        state_index = state + '_' + str(self.current_entrainment)
-        action = self.policy_function(state_index)
-        self.current_entrainment = action
-        self.current_index = state_index
-        date_type = 'EntrainmentSettings'
+    def set_entrainment_DB_item(self, action):
+        data_type = 'EntrainmentSettings'
         data = {
         'participantID': self.participantID,
         'customEntrainment': {
@@ -61,10 +57,19 @@ class QLearningInterface(AbstractMlInterface):
         'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
         'session': '2'
         }
+        # Commented for testing 
+        # self.mi.send_data(data_type, data)
+
+    def update_entrainment(self, state):
+        # Has last action and persists it
+        state_index = state + '_' + str(self.current_entrainment)
+        action = self.policy_function(state_index)
+        self.current_entrainment = action
+        self.current_index = state_index
+        self.set_entrainment_DB_item(action)
         # TODO save actions and results
         print(action)
-        # Commented for testing 
-        # self.mi.send_data(date_type, data)
+
 
 # Pass in all EEG data to get new Q values and iterate entrainment
     def update_model_and_entrainment(self, data):
