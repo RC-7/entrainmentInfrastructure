@@ -16,11 +16,11 @@ class QLearningInterface(AbstractMlInterface):
         self.model_name = model_name
         self.participantID = participantID
         self.base_entrainment_f = 370
-        self.current_entrainment = 24
+        self.current_entrainment = '24'
         #  TODO check 27 Hz
         self.entrainmentLookup = {
-            24: 21,
-            27: 24
+            '24': 21,
+            '27': 24
         }
         # self.mi = AWSMessagingInterface()
         if model_path and not model_parameters:
@@ -36,6 +36,7 @@ class QLearningInterface(AbstractMlInterface):
         state_index = state + '_' + str(self.current_entrainment)
         action = self.policy_function(state_index)
         self.current_entrainment = action
+        self.current_index = state_index
         date_type = 'EntrainmentSettings'
         data = {
         'participantID': self.participantID,
@@ -61,12 +62,17 @@ class QLearningInterface(AbstractMlInterface):
         # Commented for testing 
         # self.mi.send_data(date_type, data)
 
-    def update_model(self, update_information):
-        # Update with values
+    def update_model(self, action, new_state, data):
+        new_state_index = new_state + '_' + self.current_entrainment
+        
         pass
 
-    def update_q_value(self):
-        pass
+    def bellmans(self, new_state, reward):
+        Qs = self.model.loc[self.current_index][self.current_entrainment]
+        Qs1 = max(self.model.loc[new_state].values)
+        Qnew = Qs + self.learning_rate * (reward + self.discount_factor * Qs1 - Qs)
+        self.model.at[self.current_index, self.current_entrainment] = Qnew
+
 
     def read_parameters(self):
         self.states = self.model_parameters['states']
@@ -107,10 +113,10 @@ class QLearningInterface(AbstractMlInterface):
         self.update_epsilon()
         # TODO save action and if it was random 
         if rand_value < self.epsilon:
-            action = choice(self.actions)
+            action = str(choice(self.actions))
             return action
         else:
-            action = int(self.model.loc[state].idxmax(axis=1))
+            action = str(self.model.loc[state].idxmax(axis=1))
             return action
 
     def update_epsilon(self):
