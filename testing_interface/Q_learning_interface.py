@@ -19,7 +19,6 @@ class QLearningInterface(AbstractMlInterface):
         self.base_entrainment_f = 370
         # Always start with a 24 Hz BB
         self.current_entrainment = '24'
-        self.epoched_file = 'epoch.csv'
         self.actions_taken = pd.DataFrame()
         self.current_index = ''
         self.analyser = Analysis()

@@ -53,6 +53,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.data_received_cycles = 0
         self.save_intermediate_data = False
         self.filename = ''
+        self.sampling_epochs = []
         self.hdfs5_interface = HDFS5FileInterface(self.filename)
 
     def configure(self, testing):
@@ -126,6 +127,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             self.current_ml_data = []
         # Every Two minutes write data in file to keep active memory low
         if self.save_intermediate_data and len(self.active_data) > INTERMEDIATE_SAMPLE_WRITE_THRESHOLD:
+            self.sampling_epochs.append(str(datetime.datetime.now(datetime.timezone.utc)))
             options = {
                 'dataset_name': 'raw_data',
                 'keep_alive': True
@@ -155,10 +157,11 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.filename = filename
         self.eeg_device.GetData(self.eeg_device.SamplingRate, self.more)
         options = {
-            'dataset_name': 'raw_data',
+            'dataset_name': 'epoch',
             'keep_alive': False
         }
-        # self.save_active_data_to_file(self.filename, options=options)
+        self.save_data_hdfs(self.filename, options, data=self.sampling_epochs)
+    
         self.hdfs5_interface.close_file()
         self.q_learn_agent.save_model()
         self.active_data = []
