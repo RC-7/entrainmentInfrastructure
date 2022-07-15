@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from random import random
+from random import random, choice
 import os
 import json
 import datetime
@@ -35,7 +35,7 @@ class QLearningInterface(AbstractMlInterface):
     def update_entrainment(self, state):
         state_index = state + str(self.current_entrainment)
         action = self.policy_function(state)
-        self.current_entrainment = int(action.split("_")[1])
+        self.current_entrainment = action
         date_type = 'EntrainmentSettings'
         data = {
         'participantID': self.participantID,
@@ -100,10 +100,10 @@ class QLearningInterface(AbstractMlInterface):
 
     def policy_function(self, state):
         rand_value = random()
-
+        
         if rand_value < self.epsilon:
             # TODO decide if want to ignore already explored actions
-            action = random.choice(self.actions)
+            action = choice(self.actions)
             return action
         else:
             action = self.model.loc[state].idxmax(axis=1)
