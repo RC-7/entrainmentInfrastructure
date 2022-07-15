@@ -102,7 +102,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
     def more(self, samples):
         tic = time.perf_counter()
         # Do not save or consider filter start up
-        if self.filter_values < 40 * 60 * SAMPLING_RATE:
+        if self.filter_values < 40 * SAMPLING_RATE:
             self.filter_values += len(samples)
             return self.data_received_cycles > 0
         if len(self.active_data) == 0:
