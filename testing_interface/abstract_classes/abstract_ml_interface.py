@@ -5,7 +5,7 @@ class AbstractMlInterface(metaclass=ABCMeta):
 
     @abstractmethod
     def __init__(self):
-        pass
+        self.model = None
 
     @abstractmethod
     def update_entrainment(self, features):
@@ -16,7 +16,7 @@ class AbstractMlInterface(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def create_model(self, model_name):
+    def create_model(self, model_name, model_parameters):
         pass
 
     @abstractmethod
