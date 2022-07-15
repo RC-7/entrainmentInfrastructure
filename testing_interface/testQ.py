@@ -26,11 +26,31 @@ tic = time.perf_counter()
 q_learn.update_model_and_entrainment(eeg_data)
 toc = time.perf_counter()
 print(f"Data handling thread tood: {toc - tic:0.4f} seconds")
+print(q_learn.model)
+samples = hf['raw_data']
+eeg_data = samples[()]
+eeg_data = eeg_data[512*60*3:512*60*6,:]
+
+
+tic = time.perf_counter()
+q_learn.update_model_and_entrainment(eeg_data)
+toc = time.perf_counter()
+print(f"Data handling thread tood: {toc - tic:0.4f} seconds")
+print(q_learn.model)
 
 samples = hf['raw_data']
 eeg_data = samples[()]
-eeg_data = eeg_data[512*60:512*60+512*60*3,:]
+eeg_data = eeg_data[512*60*6:512*60+512*60*9,:]
 
+tic = time.perf_counter()
+q_learn.update_model_and_entrainment(eeg_data)
+toc = time.perf_counter()
+print(f"Data handling thread tood: {toc - tic:0.4f} seconds")
+
+print(q_learn.model)
+samples = hf['raw_data']
+eeg_data = samples[()]
+eeg_data = eeg_data[512*60*9:512*60+512*60*12,:]
 
 tic = time.perf_counter()
 q_learn.update_model_and_entrainment(eeg_data)

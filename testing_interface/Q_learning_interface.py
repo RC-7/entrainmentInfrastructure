@@ -36,6 +36,7 @@ class QLearningInterface(AbstractMlInterface):
                 interface to initialise model')
 
     def update_entrainment(self, state):
+        # Has last action and persists it
         state_index = state + '_' + str(self.current_entrainment)
         action = self.policy_function(state_index)
         self.current_entrainment = action
@@ -68,8 +69,8 @@ class QLearningInterface(AbstractMlInterface):
 # Pass in all EEG data to get new Q values and iterate entrainment
     def update_model_and_entrainment(self, data):
         reward, state = self.analyser.get_features_and_reward(data)
-        new_state = state + '_' + self.current_entrainment
         if self.current_index != '':
+            new_state = state + '_' + self.current_entrainment
             self.bellmans(new_state, reward)
         self.update_entrainment(state)
 
