@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import random
 import os
+import json
 
 from abstract_classes.abstract_ml_interface import AbstractMlInterface
 
@@ -11,11 +12,11 @@ class QLearningInterface(AbstractMlInterface):
         super().__init__()
         self.model_path = model_path
         self.model_name = model_name
-        self.model_parameters = model_parameters
         if model_path and not model_parameters:
             self.load_model()
         elif model_parameters and model_path:
-            self.create_model(model_path, model_parameters)
+            self.model_parameters = model_parameters
+            self.create_model()
         else:
             raise Exception('Not enough parameters passed to Q learning \
                 interface to initialise model')
@@ -26,16 +27,25 @@ class QLearningInterface(AbstractMlInterface):
     def update_model(self, update_information):
         pass
 
-    def read_parameters(self, model_parameters):
-        self.states = model_parameters['states']
-        self.actions = model_parameters['actions']
-        self.epsilon = model_parameters['epsilon']
-        self.learning_rate = model_parameters['learning_rate']
-        self.discount_factor = model_parameters['discount_factor']
+    def read_parameters(self):
+        self.states = self.model_parameters['states']
+        self.actions = self.model_parameters['actions']
+        self.epsilon = self.model_parameters['epsilon']
+        self.learning_rate = self.model_parameters['learning_rate']
+        self.discount_factor = self.model_parameters['discount_factor']
+
+    def get_parameters(self):
+        model_parameters = {}
+        model_parameters['states'] = self.states
+        model_parameters['actions'] = self.actions
+        model_parameters['epsilon'] = self.epsilon
+        model_parameters['learning_rate'] = self.learning_rate
+        model_parameters['discount_factor'] = self.discount_factor
+        return model_parameters
 
     # Pass model perameters as a dict of state and action arrays
-    def create_model(self, model_path, model_parameters):
-        self.read_parameters(model_parameters)
+    def create_model(self):
+        self.read_parameters(self.model_parameters)
 
         state_zeros = np.zeros(len(self.states))
         state_zeros[0] = 1
@@ -73,15 +83,26 @@ class QLearningInterface(AbstractMlInterface):
             new_model_name = f'{old_model_name[0]}_0'
 
         self.model_name = new_model_name
-        path = self.model_path + self.model_name
-        self.model.to_csv(path, index=True)
+        path_model = self.model_path + self.model_name
+        self.model.to_csv(path_model, index=True)
+        path_parameters = path_model + '_Parameters.json'
+        parameters = self.get_parameters()
+        with open(path_parameters, "w") as outfile:
+            json.dump(parameters, outfile)
+
+
 
     def load_model(self):
         path = f'{self.model_path}'
-        f = lambda s : self.model_name in s
+        f = lambda s : len(s.split("_")) == 2 and self.model_name in s
         filenames = list(filter(f, os.listdir(self.model_path)))
         self.model_name = filenames[0]
+        full_model_path = self.model_path + self.model_name
         self.model = pd.read_csv(self.model_path + self.model_name, index_col=0)
-        print(self.model)
+        parameter_path = full_model_path + '_Parameters.json'
+        parameter_file = open(parameter_path)
+        self.model_parameters = json.load(parameter_file)
+        parameter_file.close()
+        self.read_parameters()
 
 
