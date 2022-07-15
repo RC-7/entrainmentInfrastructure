@@ -115,7 +115,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             self.current_ml_data = np.append(self.current_ml_data, samples, axis=0)
         if len(self.current_ml_data) >= ML_CONSIDERATION_THRESHOLD:
             # Try to apply ML syncronously
-            self.q_learn_agent(self.current_ml_data)
+            self.q_learn_agent.update_model_and_entrainment(self.current_ml_data)
             self.current_ml_data = []
         # Every Two minutes write data in file to keep active memory low
         if self.save_intermediate_data and len(self.active_data) > INTERMEDIATE_SAMPLE_WRITE_THRESHOLD:
