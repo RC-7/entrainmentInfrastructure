@@ -9,6 +9,7 @@ from pygds import GDSError
 from abstract_classes.abstract_eeg_device_interface import AbstractEEGDeviceInterface
 from csv_file_interface import CSVFileInterface
 from hdfs5_file_interface import HDFS5FileInterface
+from Q_learning_interface import QLearningInterface
 
 electrodes_file = open('constants/electrodes.json')
 DEFAULT_ELECTRODES = json.load(electrodes_file)['active_electrodes']
@@ -31,6 +32,18 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.active_electrodes = create_active_electrode_bool_array(active_electrodes)
         self.eeg_device = pygds.GDS()
         self.configure(testing)
+        self.filter_values = 0
+        model_parameters = {
+            "states":  ['up_24', 'down_24', 'up_27', 'down_27'], 
+            'actions': ['24', '27'],
+            "epsilon": 1,
+            "learning_rate": 0.2,
+            "discount_factor": 0.4,
+            "step": 0
+        }
+
+        self.q_learn_agent = QLearningInterface(model_parameters=model_parameters,
+                                                model_path='models/', model_name='bciAgent')
         # self.print_all_device_info()
         self.active_data = []
         self.data_received_cycles = 0
@@ -85,6 +98,10 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
 
     def more(self, samples):
         tic = time.perf_counter()
+        # Do not save or consider filter start up
+        if self.filter_values < 30 * 60 * SAMPLING_RATE:
+            self.filter_values += len(samples)
+            return self.data_received_cycles > 0
         if len(self.active_data) == 0:
             self.active_data = samples
         else:
