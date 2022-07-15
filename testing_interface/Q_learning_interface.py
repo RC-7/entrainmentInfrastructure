@@ -1,17 +1,28 @@
 import pandas as pd
 import numpy as np
-import random
+from random import random
 import os
 import json
+import datetime
 
 from abstract_classes.abstract_ml_interface import AbstractMlInterface
+from aws_messaging_interface import AWSMessagingInterface
 
 
 class QLearningInterface(AbstractMlInterface):
-    def __init__(self, model_path = '.', model_parameters = None, model_name = None):
+    def __init__(self, participantID='1', model_path = '.', model_parameters = None, model_name = None):
         super().__init__()
         self.model_path = model_path
         self.model_name = model_name
+        self.participantID = participantID
+        self.base_entrainment_f = 370
+        self.current_entrainment = 24
+        #  TODO check 27 Hz
+        self.entrainmentLookup = {
+            24: 21,
+            27: 24
+        }
+        # self.mi = AWSMessagingInterface()
         if model_path and not model_parameters:
             self.load_model()
         elif model_parameters and model_path:
@@ -21,10 +32,40 @@ class QLearningInterface(AbstractMlInterface):
             raise Exception('Not enough parameters passed to Q learning \
                 interface to initialise model')
 
-    def update_entrainment(self, features):
-        pass
+    def update_entrainment(self, state):
+        state_index = state + str(self.current_entrainment)
+        action = self.policy_function(state)
+        self.current_entrainment = int(action.split("_")[1])
+        date_type = 'EntrainmentSettings'
+        data = {
+        'participantID': self.participantID,
+        'customEntrainment': {
+            "visual": {
+                'colour': 'red',
+                'frequency': '0',
+                },
+            'audio': {
+                'baseFrequency': self.base_entrainment_f,
+                'entrainmentFrequency': self.entrainmentLookup[action],
+                },
+            'neurofeedback': {
+                'redChannel': '0',
+                'greenChannel': '0'
+                },
+            },
+        'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
+        'session': '2'
+        }
+        # TODO save actions and results
+        print(action)
+        # Commented for testing 
+        # self.mi.send_data(date_type, data)
 
     def update_model(self, update_information):
+        # Update with values
+        pass
+
+    def update_q_value(self):
         pass
 
     def read_parameters(self):
@@ -45,7 +86,7 @@ class QLearningInterface(AbstractMlInterface):
 
     # Pass model perameters as a dict of state and action arrays
     def create_model(self):
-        self.read_parameters(self.model_parameters)
+        self.read_parameters()
 
         state_zeros = np.zeros(len(self.states))
         data = {}
@@ -67,11 +108,6 @@ class QLearningInterface(AbstractMlInterface):
         else:
             action = self.model.loc[state].idxmax(axis=1)
             return action
-
-
-
-    def update_q_value(self):
-        pass
 
 
     def save_model(self):

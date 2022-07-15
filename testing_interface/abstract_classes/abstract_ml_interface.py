@@ -8,7 +8,7 @@ class AbstractMlInterface(metaclass=ABCMeta):
         self.model = None
 
     @abstractmethod
-    def update_entrainment(self, features):
+    def update_entrainment(self, state):
         pass
 
     @abstractmethod
