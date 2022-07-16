@@ -226,6 +226,10 @@ def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='cl
         plv = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True, filename=filename,
                                   ratio=ratio)
     number_dp = len(plv[f'{ch_names[0]}-{ch_names[1]}'])
+    time_values = range(number_dp)
+    # 5 s trials
+    time_values = [((x * 5) / 60) for x in time_values]
+    ma_time_global = moving_average(time_values, 20)
     metric_values_global = np.zeros((len(electrodes_to_plot), number_dp))
     electrode_graph = nx.Graph()
     for ch in range(len(electrodes_to_plot)):
@@ -257,8 +261,31 @@ def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='cl
             get_ratio = lambda v: v / mean_resting
             cluster_single_electrode = np.array([get_ratio(x) for x in cluster_single_electrode])
         ma_cluster = moving_average(cluster_single_electrode, 20)
+
         if not region_averaged:
-            ax[active_row, active_column].plot(ma_cluster)
+            ax[active_row, active_column].plot(ma_time_global, ma_cluster)
+            x_end = ma_time_global[-1]
+            y_end = ma_cluster[-1]
+            y_max_index = np.argmax(ma_cluster)
+            y_min_index = np.argmin(ma_cluster)
+            label_end = "{:.2f}".format(y_end)
+            label_start = "{:.2f}".format(ma_cluster[0])
+            label_max = "{:.2f}".format(ma_cluster[y_max_index])
+            label_min = "{:.2f}".format(ma_cluster[y_min_index])
+            ax[active_row, active_column].annotate(label_end, (x_end, y_end), textcoords="offset points",
+                                                   xytext=(0, 10),
+                                                   ha='right')
+            ax[active_row, active_column].annotate(label_start, (ma_time_global[0], ma_cluster[0]),
+                                                   textcoords="offset points", xytext=(0, 10),
+                                                   ha='left')
+            ax[active_row, active_column].annotate(label_max, (ma_time_global[y_max_index], ma_cluster[y_max_index]),
+                                                   textcoords="offset points",
+                                                   xytext=(0, 10),
+                                                   ha='left')
+            ax[active_row, active_column].annotate(label_min, (ma_time_global[y_min_index], ma_cluster[y_min_index]),
+                                                   textcoords="offset points",
+                                                   xytext=(0, 10),
+                                                   ha='left')
             ax[active_row, active_column].set_title(ch_names[i])
             active_column += 1
             if active_column == column:
@@ -268,12 +295,36 @@ def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='cl
             region = ''.join([k for k in ch_names[i] if not k.isdigit()])
             region_averaged_aggregate[region].append(ma_cluster)
     if region_averaged:
-        print(region_averaged_aggregate.keys())
         row, column, fig, ax = setup_figure(region_averaged_aggregate.keys())
         for key in region_averaged_aggregate:
             ma_avg = np.mean(region_averaged_aggregate[key], axis=0)
-            ax[active_row, active_column].plot(ma_avg)
+            ax[active_row, active_column].plot(ma_time_global, ma_avg)
+            x_end = ma_time_global[-1]
+            y_end = ma_avg[-1]
+            y_max_index = np.argmax(ma_avg)
+            y_min_index = np.argmin(ma_avg)
+            label_end = "{:.4f}".format(y_end)
+            label_start = "{:.4f}".format(ma_avg[0])
+            if y_max_index != 0 and y_max_index != len(ma_avg) - 1:
+                label_max = "{:.4f}".format(ma_avg[y_max_index])
+                ax[active_row, active_column].annotate(label_max, (ma_time_global[y_max_index], ma_avg[y_max_index]),
+                                                       textcoords="offset points",
+                                                       xytext=(0, 2),
+                                                       ha='right')
+            if y_min_index != 0 and y_min_index != len(ma_avg) - 1:
+                label_min = "{:.4f}".format(ma_avg[y_min_index])
+                ax[active_row, active_column].annotate(label_min, (ma_time_global[y_min_index], ma_avg[y_min_index]),
+                                                       textcoords="offset points",
+                                                       xytext=(0, -5),
+                                                       ha='right')
+            ax[active_row, active_column].annotate(label_end, (x_end, y_end), textcoords="offset points",
+                                                   xytext=(0, 10),
+                                                   ha='right')
+            ax[active_row, active_column].annotate(label_start, (ma_time_global[0], ma_avg[0]),
+                                                   textcoords="offset points", xytext=(0, 10),
+                                                   ha='left')
             ax[active_row, active_column].set_title(key)
+            ax[active_row, active_column].grid()
             active_column += 1
             if active_column == column:
                 active_row += 1
