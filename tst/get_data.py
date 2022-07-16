@@ -26,7 +26,7 @@ def main():
     #############################
 
     body_values = {
-        'projectionAttributes': 'participantID',
+        'projectionAttributes': 'customEntrainment',
         'filterValues': 'test'
 
     }
@@ -38,28 +38,28 @@ def main():
     ####### generic query #######
     #############################
 
-
-    body_values = {
-        'projectionAttributes': 'participantID, score',
-        'filterValues': {
-            'participantID': {
-                'condition': 'eq',
-                'value': '1'
-            },
-            'timestamp': {
-                'condition': 'between',
-                'value': ['2022-02-21 11:48:10.586025', '2022-02-21 12:50:09.670406']            
-            },
-            'score': {
-                'condition': 'exists',
-                'value': ''
-            }
-        }
-
-    }
-    header_data_type = 'generic'
-
-    get_data(header_data_type, body_values)
+    #
+    # body_values = {
+    #     'projectionAttributes': 'participantID, score',
+    #     'filterValues': {
+    #         'participantID': {
+    #             'condition': 'eq',
+    #             'value': '1'
+    #         },
+    #         'timestamp': {
+    #             'condition': 'between',
+    #             'value': ['2022-02-21 11:48:10.586025', '2022-02-21 12:50:09.670406']
+    #         },
+    #         'score': {
+    #             'condition': 'exists',
+    #             'value': ''
+    #         }
+    #     }
+    #
+    # }
+    # header_data_type = 'generic'
+    #
+    # get_data(header_data_type, body_values)
 
 if __name__ == "__main__":
     main()

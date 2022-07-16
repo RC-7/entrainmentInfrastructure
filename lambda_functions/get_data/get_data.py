@@ -13,7 +13,7 @@ EXPERIMENT_TABLE = dynamodb.Table(TABLE_NAME)
 
 
 def build_entrainment_filter(_):
-    time_five_min_ago = str(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5))
+    time_five_min_ago = str(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=3))
     fe = ""
     fe += "Key('timestamp').gt('" + time_five_min_ago + "') & "
     fe += "Attr('customEntrainment').exists()"
@@ -94,4 +94,4 @@ def lambda_handler(event, _):
     if not filter_expression:
         return respond('Invalid filter expression', '404')
     [data, status] = get_data(filter_expression, projection_attributes)
-    return respond(data, status)
+    return respond(data[-1], status)
