@@ -134,14 +134,14 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
                 'dataset_name': 'raw_data',
                 'keep_alive': True
             }
-            print(len(self.active_data))
-            print(len(self.active_data[0]))
+            # print(len(self.active_data))
+            # print(len(self.active_data[0]))
             self.save_active_data_to_file(self.filename, options=options)
             self.active_data = []
             self.data_received_cycles -= INTERMEDIATE_SECOND_WRITE_THRESHOLD
         toc = time.perf_counter()
-        print(f"Data handling thread tood: {toc - tic:0.4f} seconds")
-        print(self.data_received_cycles)
+        print(f"Data handling thread took: {toc - tic:0.4f} seconds")
+        print(f'minutes left: {self.data_received_cycles/60}')
         return self.data_received_cycles > 0
 
     def get_scaling(self):
