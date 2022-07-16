@@ -11,7 +11,7 @@ from analysis import Analysis
 
 
 class QLearningInterface(AbstractMlInterface):
-    def __init__(self, participantID='1', model_path = '.', model_parameters = None, model_name = None):
+    def __init__(self, participantID='1', model_path='.', model_parameters=None, model_name=None):
         super().__init__()
         self.model_path = model_path
         self.model_name = model_name
@@ -27,7 +27,7 @@ class QLearningInterface(AbstractMlInterface):
             '24': 21,
             '27': 24
         }
-        # self.mi = AWSMessagingInterface()
+        self.mi = AWSMessagingInterface()
         if model_path and not model_parameters:
             self.load_model()
         elif model_parameters and model_path:
@@ -41,26 +41,26 @@ class QLearningInterface(AbstractMlInterface):
         print(f'updating entrainment to: {action}')
         data_type = 'EntrainmentSettings'
         data = {
-        'participantID': self.participantID,
-        'customEntrainment': {
-            "visual": {
-                'colour': 'red',
-                'frequency': '0',
+            'participantID': str(self.participantID),
+            'customEntrainment': {
+                "visual": {
+                    'colour': 'red',
+                    'frequency': '0',
                 },
-            'audio': {
-                'baseFrequency': self.base_entrainment_f,
-                'entrainmentFrequency': self.entrainmentLookup[action],
+                'audio': {
+                    'baseFrequency': str(self.base_entrainment_f),
+                    'entrainmentFrequency': str(self.entrainmentLookup[action]),
                 },
-            'neurofeedback': {
-                'redChannel': '0',
-                'greenChannel': '0'
+                'neurofeedback': {
+                    'redChannel': '0',
+                    'greenChannel': '0'
                 },
             },
-        'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
-        'session': '2'
+            'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
+            'session': '2'
         }
         # Commented for testing 
-        # self.mi.send_data(data_type, data)
+        self.mi.send_data(data_type, data)
 
     def update_entrainment(self, state):
         # Has last action and persists it
@@ -74,11 +74,10 @@ class QLearningInterface(AbstractMlInterface):
             'action': action,
             'timestamp': str(datetime.datetime.now(datetime.timezone.utc))
         }
-        self.actions_taken = self.actions_taken.append(epoched_values, ignore_index = True)
+        self.actions_taken = self.actions_taken.append(epoched_values, ignore_index=True)
         print(action)
 
-
-# Pass in all EEG data to get new Q values and iterate entrainment
+    # Pass in all EEG data to get new Q values and iterate entrainment
     def update_model_and_entrainment(self, data):
         print('Updating Machine learning model')
         reward, state = self.analyser.get_features_and_reward(data)
@@ -91,13 +90,11 @@ class QLearningInterface(AbstractMlInterface):
             print('--------------------')
         self.update_entrainment(state)
 
-
     def bellmans(self, new_state, reward):
         Qs = self.model.loc[self.current_index][self.current_entrainment]
         Qs1 = max(self.model.loc[new_state].values)
         Qnew = Qs + self.learning_rate * (reward + self.discount_factor * Qs1 - Qs)
         self.model.at[self.current_index, self.current_entrainment] = Qnew
-
 
     def read_parameters(self):
         self.states = self.model_parameters['states']
@@ -105,7 +102,7 @@ class QLearningInterface(AbstractMlInterface):
         self.epsilon = self.model_parameters['epsilon']
         self.learning_rate = self.model_parameters['learning_rate']
         self.discount_factor = self.model_parameters['discount_factor']
-        self.step  = self.model_parameters['step']
+        self.step = self.model_parameters['step']
 
     def get_parameters(self):
         model_parameters = {}
@@ -125,7 +122,7 @@ class QLearningInterface(AbstractMlInterface):
         data = {}
         for action in self.actions:
             data[action] = state_zeros
-        
+
         self.model = pd.DataFrame(data, index=self.states)
         print(self.model)
         # print(self.model.loc['up_24'][24])
@@ -152,7 +149,6 @@ class QLearningInterface(AbstractMlInterface):
         self.epsilon = (pinit - pend) * r + pend
         self.step += 1
 
-
     def save_model(self):
         old_model_name = self.model_name.split("_")
         if len(old_model_name) == 2:
@@ -175,7 +171,7 @@ class QLearningInterface(AbstractMlInterface):
 
     def load_model(self):
         path = f'{self.model_path}'
-        f = lambda s : len(s.split("_")) == 2 and self.model_name in s
+        f = lambda s: len(s.split("_")) == 2 and self.model_name in s
         filenames = list(filter(f, os.listdir(self.model_path)))
         self.model_name = filenames[0]
         full_model_path = self.model_path + self.model_name
@@ -185,5 +181,3 @@ class QLearningInterface(AbstractMlInterface):
         self.model_parameters = json.load(parameter_file)
         parameter_file.close()
         self.read_parameters()
-
-
