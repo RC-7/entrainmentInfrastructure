@@ -51,7 +51,7 @@ class Analysis():
             for j in range(len(abs_power[0])):
                 alpha_values = []
                 for z in range(len(f)):
-                    if 28 >= f[z] >= 18:
+                    if 28 >= f[z] >= 15:
                         alpha_values.append(abs_power[z, j])
                 ave_alpha = np.mean(alpha_values)  # Decide on what to use here
                 alpha_average_values.append(ave_alpha)

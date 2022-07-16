@@ -37,8 +37,8 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         self.configure(testing)
         self.filter_values = 0
         model_parameters = {
-            "states":  ['up_24', 'down_24', 'up_27', 'down_27'], 
-            'actions': ['24', '27'],
+            "states":  ['up_24', 'down_24', 'up_18', 'down_18'],
+            'actions': ['24', '18'],
             "epsilon": 1,
             "learning_rate": 0.2,
             "discount_factor": 0.4,
@@ -46,7 +46,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         }
 
         self.q_learn_agent = QLearningInterface(model_parameters=model_parameters,
-                                                model_path='models/', model_name='bciAgent')
+                                                model_path='models/', model_name='bciAgent_0')
         # self.print_all_device_info()
         self.active_data = []
         self.current_ml_data = []

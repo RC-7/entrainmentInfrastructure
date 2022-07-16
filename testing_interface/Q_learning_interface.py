@@ -22,10 +22,10 @@ class QLearningInterface(AbstractMlInterface):
         self.actions_taken = pd.DataFrame()
         self.current_index = ''
         self.analyser = Analysis()
-        #  TODO check 27 Hz
+        #  TODO check make dynamic
         self.entrainmentLookup = {
             '24': 21,
-            '27': 24
+            '18': 20
         }
         self.mi = AWSMessagingInterface()
         if model_path and not model_parameters:
