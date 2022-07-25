@@ -549,7 +549,7 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
             #     j = 703 * SAMPLING_SPEED + 1
             #     continue
             if j == end_index:
-                print('its happening')
+                # print('its happening')
                 break
             values = alpha_average_values[j:end_index]
             time_values = t[j:end_index]
