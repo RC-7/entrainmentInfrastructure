@@ -13,6 +13,12 @@ from analysis import Analysis
 class QLearningInterface(AbstractMlInterface):
     def __init__(self, participantID='1', model_path='.', model_parameters=None, model_name=None):
         super().__init__()
+        self.states = []
+        self.actions = []
+        self.epsilon = 1
+        self.learning_rate = 1
+        self.discount_factor = 1
+        self.step = 0
         self.model_path = model_path
         self.model_name = model_name
         self.participantID = participantID
@@ -65,7 +71,9 @@ class QLearningInterface(AbstractMlInterface):
     def update_entrainment(self, state):
         # Has last action and persists it
         state_index = state + '_' + str(self.current_entrainment)
+        print(f'state index: {state_index}')
         action = self.policy_function(state_index)
+        print(f'state index: {action}')
         self.current_entrainment = action
         self.current_index = state_index
         self.set_entrainment_DB_item(action)
@@ -116,6 +124,7 @@ class QLearningInterface(AbstractMlInterface):
 
     # Pass model perameters as a dict of state and action arrays
     def create_model(self):
+        print('creating new model!!')
         self.read_parameters()
 
         state_zeros = np.zeros(len(self.states))
@@ -133,8 +142,7 @@ class QLearningInterface(AbstractMlInterface):
         # force_explore = (self.model.loc[state].values == 0).any()
 
         self.update_epsilon()
-        # TODO save action and if it was random 
-        if rand_value < self.epsilon:
+        if rand_value <= self.epsilon:
             action = str(choice(self.actions))
             return action
         else:
@@ -142,7 +150,7 @@ class QLearningInterface(AbstractMlInterface):
             return action
 
     def update_epsilon(self):
-        n = 15
+        n = 90
         pinit = 1
         pend = 0.15
         r = max((n - self.step) / n, 0)
@@ -170,14 +178,16 @@ class QLearningInterface(AbstractMlInterface):
         self.actions_taken.to_csv(actions_file, index=False)
 
     def load_model(self):
-        path = f'{self.model_path}'
+        print('Using existing model!!')
         f = lambda s: len(s.split("_")) == 2 and self.model_name in s
         filenames = list(filter(f, os.listdir(self.model_path)))
         self.model_name = filenames[0]
+        # print(filenames)
         full_model_path = self.model_path + self.model_name
         self.model = pd.read_csv(self.model_path + self.model_name, index_col=0)
         parameter_path = full_model_path + '_Parameters.json'
         parameter_file = open(parameter_path)
         self.model_parameters = json.load(parameter_file)
+        print(self.model)
         parameter_file.close()
         self.read_parameters()

@@ -6,6 +6,7 @@ import time
 from matplotlib import pyplot as plt
 from pygds import Scope
 from pygds import GDSError
+from pygds import DEVICE_TYPE_GHIAMP
 from abstract_classes.abstract_eeg_device_interface import AbstractEEGDeviceInterface
 from csv_file_interface import CSVFileInterface
 from hdfs5_file_interface import HDFS5FileInterface
@@ -17,7 +18,7 @@ DEFAULT_ELECTRODES = json.load(electrodes_file)['active_electrodes']
 
 SAMPLING_RATE = 512
 # Twenty seconds of samples saved at a time
-INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 512*10
+INTERMEDIATE_SAMPLE_WRITE_THRESHOLD = 512*19
 INTERMEDIATE_SECOND_WRITE_THRESHOLD = 20
 
 ML_CONSIDERATION_THRESHOLD = SAMPLING_RATE * 60 * 3
@@ -45,8 +46,8 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             "step": 0
         }
 
-        self.q_learn_agent = QLearningInterface(model_parameters=model_parameters,
-                                                model_path='models/', model_name='bciAgent_0')
+        self.q_learn_agent = QLearningInterface(model_parameters=None,
+                                                model_path='models/', model_name='bciAgent_2')
         # self.print_all_device_info()
         self.active_data = []
         self.current_ml_data = []
@@ -68,18 +69,6 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
                          == self.eeg_device.SamplingRate]
         bandpass_filters = [x for x in self.eeg_device.GetBandpassFilters()[0] if x['SamplingRate']
                             == self.eeg_device.SamplingRate]
-        print('---------------------------------------')
-        # print('Printing filter information for sampling rate')
-        # print(notch_filters)
-        # print(bandpass_filters)
-        print('Printing sampling rate')
-        print(all_sampling_rates)
-        print('Printing sampling value')
-        print(self.eeg_device.GetSupportedSamplingRates())
-        # Test me
-        # self.eeg_device.NumberOfScans_calc()
-        print(self.eeg_device.DeviceType)
-        print('---------------------------------------')
         channel_counter = 1
         if testing:
             self.eeg_device.InternalSignalGenerator.Enabled = True
@@ -87,7 +76,9 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
         for ch in self.eeg_device.Channels:
             if channel_counter <= 64:
                 ch.Acquire = True
-                ch.BipolarChannel = 0
+                ch.BipolarChannel = 0   # Ref to GND then ref post fact
+                # if channel_counter != 64:
+                #     ch.BipolarChannel = 0   # Ref to GND then ref post fact
                 ch.NotchFilterIndex = notch_filters[0]['NotchFilterIndex']
                 # 'Order': 8 'LowerCutoffFrequency': 0.01, 'UpperCutoffFrequency': 100.0
                 ch.BandpassFilterIndex = bandpass_filters[14]['BandpassFilterIndex']
@@ -95,7 +86,6 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             else:
                 ch.Acquire = False
 
-        print(self.eeg_device.Channels())
         self.eeg_device.SetConfiguration()
 
     def impedance_check(self):
@@ -118,7 +108,7 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             else:
                 self.current_ml_data = np.append(self.current_ml_data, samples, axis=0)
             if len(self.current_ml_data) >= ML_CONSIDERATION_THRESHOLD:
-                # Try to apply ML syncronously
+                # Try to apply ML synchronously
                 self.q_learn_agent.update_model_and_entrainment(self.current_ml_data)
 
                 # If threadng is required
@@ -134,14 +124,12 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
                 'dataset_name': 'raw_data',
                 'keep_alive': True
             }
-            # print(len(self.active_data))
-            # print(len(self.active_data[0]))
             self.save_active_data_to_file(self.filename, options=options)
             self.active_data = []
             self.data_received_cycles -= INTERMEDIATE_SECOND_WRITE_THRESHOLD
-        toc = time.perf_counter()
-        print(f"Data handling thread took: {toc - tic:0.4f} seconds")
-        print(f'minutes left: {self.data_received_cycles/60}')
+            toc = time.perf_counter()
+            print(f"Data handling thread took: {toc - tic:0.4f} seconds")
+            print(f'minutes left: {self.data_received_cycles/60}')
         return self.data_received_cycles > 0
 
     def get_scaling(self):
@@ -161,12 +149,9 @@ class EEGDeviceInterface(AbstractEEGDeviceInterface):
             print(f'Using machine learning during run!!!')
         self.filename = filename
         self.eeg_device.GetData(self.eeg_device.SamplingRate, self.more)
-        options = {
-            'dataset_name': 'epoch',
-            'keep_alive': False
-        }
-        self.save_data_hdfs(self.filename, options, data=self.sampling_epochs)
-    
+
+        self.save_data_csv(self.filename, data=self.sampling_epochs)
+
         self.hdfs5_interface.close_file()
         if self.use_ml:
             self.q_learn_agent.save_model()
