@@ -90,3 +90,42 @@ def view_data(raw_data, tmin_crop=None, tmax_crop=None):
     print(f'max: {type(data_to_view.get_data().transpose())}')
     print(f'max: {np.amax(data_to_view.get_data().transpose())}')
     print(f'min: {np.amin(data_to_view.get_data().transpose())}')
+
+
+def epoch_artifacts(raw_data, ch_names, threshold=None):
+    sampling_speed = 512
+    cz_index = ch_names.index('Cz')
+    cz_data_index = np.index_exp[:, cz_index]
+    eeg_data = raw_data.get_data().transpose()
+    data = eeg_data[cz_data_index]
+    indices_above_thresh = np.argwhere(data > threshold)
+    epochs = []
+    diff = np.diff(indices_above_thresh, axis=0)
+    start = 0
+    for idx_diff, diff in enumerate(diff):
+        if start == 0:
+            start = indices_above_thresh[idx_diff][0]
+        elif diff != 1:
+            end_value = indices_above_thresh[idx_diff][0]
+            start_epoch = start / sampling_speed
+            end_epoch = end_value / sampling_speed
+            array_to_append = [start_epoch, end_epoch]
+            epochs.append(array_to_append)
+            start = 0
+    # Group together epochs less than 1 s from one another
+    final_epochs = []
+    spaced_epoch = []
+    grouping_threshod = 1
+    for id_epoch, epoch in enumerate(epochs):
+        if not spaced_epoch:
+            spaced_epoch.append(epoch[0])
+        if id_epoch != len(epochs) - 1:
+            if epochs[id_epoch + 1][0] - epoch[1] > grouping_threshod:
+                spaced_epoch.append(epoch[1])
+        else:
+            spaced_epoch.append(epoch[1])
+        if len(spaced_epoch) == 2:
+            final_epochs.append(spaced_epoch)
+            spaced_epoch = []
+
+    return final_epochs
