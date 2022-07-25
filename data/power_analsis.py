@@ -490,7 +490,7 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
         plt.close(fig)
 
 
-def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None, plot_averaged=False):
+def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', save=False, filename=None, plot_averaged=False):
     active_row = 0
     active_column = 0
     ma_global = []
@@ -514,8 +514,9 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, f
         for j in range(len(abs_power[0])):
             alpha_values = []
             for z in range(len(f)):
-                # if 28 >= f[z] >= 15:
-                if 13 >= f[z] >= 8:
+                if 28 >= f[z] >= 15 and band == 'beta':
+                    alpha_values.append(abs_power[z, j])
+                if 13 >= f[z] >= 8 and band == 'alpha':
                     alpha_values.append(abs_power[z, j])
             ave_alpha = np.mean(alpha_values)  # Decide on what to use here
             alpha_average_values.append(ave_alpha)
