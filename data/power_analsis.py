@@ -1,3 +1,5 @@
+import math
+
 from constants import ch_names, eeg_bands, SAMPLING_SPEED, ch_hemisphere
 from scipy import signal
 import numpy as np
@@ -490,7 +492,8 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
         plt.close(fig)
 
 
-def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', save=False, filename=None, plot_averaged=False):
+def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', artifact_epochs=None, save=False,
+                   filename=None, plot_averaged=False):
     active_row = 0
     active_column = 0
     ma_global = []
@@ -503,7 +506,11 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
         data_to_plot = data[np_slice_indexes[i]]
         # print(len(data_to_plot))
         # TODO Add dynamic
-        # data_to_plot = np.delete(data_to_plot, slice(700 * SAMPLING_SPEED, 703 * SAMPLING_SPEED))
+        if artifact_epochs:
+            for epoch in artifact_epochs:
+                index_low = math.floor(epoch[0] * SAMPLING_SPEED)
+                index_high = math.floor(epoch[1] * SAMPLING_SPEED)
+                data_to_plot = np.delete(data_to_plot, slice(index_low, index_high))
         # data_to_plot = np.delete(data_to_plot, slice(540 * SAMPLING_SPEED, 542 * SAMPLING_SPEED))
         # print(len(data_to_plot))
         samples_per_ft = 100

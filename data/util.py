@@ -94,7 +94,7 @@ def view_data(raw_data, tmin_crop=None, tmax_crop=None):
 
 def epoch_artifacts(raw_data, ch_names, threshold=None):
     sampling_speed = 512
-    buffer = 30
+    buffer = 2 * sampling_speed
     cz_index = ch_names.index('Cz')
     cz_data_index = np.index_exp[:, cz_index]
     eeg_data = raw_data.get_data().transpose()
@@ -121,7 +121,7 @@ def epoch_artifacts(raw_data, ch_names, threshold=None):
         if not spaced_epoch:
             spaced_epoch.append(epoch[0])
         if id_epoch != len(epochs) - 1:
-            if epochs[id_epoch + 1][0] - epoch[1] > grouping_threshold:
+            if np.abs(epochs[id_epoch + 1][0] - epoch[1]) > grouping_threshold:
                 spaced_epoch.append(epoch[1])
         else:
             spaced_epoch.append(epoch[1])

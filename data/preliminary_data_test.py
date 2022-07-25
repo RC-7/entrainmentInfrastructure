@@ -25,7 +25,7 @@ def main():
     # ds_name = 'pink_audio'
     # participants = ['Full_run_V', 'Full_run_A', 'Full_run_B', 'Full_run_El', 'Full_run_H', 'Full_run_Jasp',
     #                 'Full_run_D', 'Full_run_S', 'Full_run_Zo', 'Full_run_P']
-    participants = ['Full_run_D']
+    participants = ['Full_run_A']
     test = ['Full_run_V', 'Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D']
     threshold = 100
 
@@ -47,8 +47,9 @@ def main():
         cropped_data = crop_data(raw, min_crop)
 
         epochs = epoch_artifacts(cropped_data, ch_names, threshold)
-        print(epochs)
 
+        [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='beta')
+        cropped_data = crop_data(raw, min_crop)
         fn = f'{p.split("_")[-1]}_Whole_Beta_Clustering'
         print(fn)
         # output_filename = f'custom_suite/Full_run/{ds_name}_cleaned_V1.h5'
@@ -84,9 +85,9 @@ def main():
         #           filename='J_STFT_Beta_power.png',
         #           plot_averaged=True)
 
-        fn = f'{p.split("_")[-1]}_Whole_Alpha_corrected'
-        # stft_by_region(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn,
-        #                plot_averaged=True)
+        fn = f'{p.split("_")[-1]}_power_test_epoch_rem'
+        stft_by_region(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn,
+                       plot_averaged=True, artifact_epochs=epochs, band='beta')
 
 
 if __name__ == '__main__':
