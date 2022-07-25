@@ -504,15 +504,25 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
     data = eeg_data.get_data().transpose()
     for i in electrodes_to_plot:
         data_to_plot = data[np_slice_indexes[i]]
-        # print(len(data_to_plot))
-        # TODO Add dynamic
+        ml_epochs = [x * SAMPLING_SPEED * 3 * 60 for x in range(1, 5)]
         if artifact_epochs:
             for epoch in artifact_epochs:
                 index_low = math.floor(epoch[0] * SAMPLING_SPEED)
                 index_high = math.floor(epoch[1] * SAMPLING_SPEED)
                 data_to_plot = np.delete(data_to_plot, slice(index_low, index_high))
-        # data_to_plot = np.delete(data_to_plot, slice(540 * SAMPLING_SPEED, 542 * SAMPLING_SPEED))
-        # print(len(data_to_plot))
+                samples_removed = index_high - index_low
+                affecting_ml_epoch = False
+                for idx_ml_epoch, ml_epoch in ml_epochs:
+                    if affecting_ml_epoch:
+                        ml_epochs[idx_ml_epoch] -= samples_removed
+                        continue
+                    if index_low < ml_epoch and index_high < ml_epoch:
+                        ml_epochs[idx_ml_epoch] -= samples_removed
+                        affecting_ml_epoch = True
+                    elif index_low < ml_epoch and index_high > ml_epoch:
+                        ml_epochs[idx_ml_epoch] -= (samples_removed + index_high - ml_epoch)
+                        affecting_ml_epoch = True
+
         samples_per_ft = 100
         overlap = 10
         f, t, Zxx = signal.stft(x=data_to_plot, fs=SAMPLING_SPEED, nperseg=samples_per_ft, noverlap=overlap, nfft=512)
