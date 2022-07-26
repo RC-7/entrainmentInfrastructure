@@ -95,6 +95,7 @@ def view_data(raw_data, tmin_crop=None, tmax_crop=None):
 def epoch_artifacts(raw_data, ch_names, threshold=None):
     sampling_speed = 512
     buffer = 2 * sampling_speed
+    artefact_max_time = 10
     cz_index = ch_names.index('Cz')
     cz_data_index = np.index_exp[:, cz_index]
     eeg_data = raw_data.get_data().transpose()
@@ -112,9 +113,12 @@ def epoch_artifacts(raw_data, ch_names, threshold=None):
             end_value = indices_above_thresh[idx_diff][0]
             start_epoch = (start - buffer) / sampling_speed
             end_epoch = (end_value + buffer) / sampling_speed
+            if end_epoch - start_epoch > artefact_max_time:
+                start = 0
+                continue
             next_start_value = indices_above_thresh[idx_diff + 1][0]
             next_start_epoch = next_start_value / sampling_speed
-            print(idx_diff)
+            # print(idx_diff)
             if next_start_epoch > end_epoch or end_index:
                 array_to_append = [start_epoch, end_epoch]
                 epochs.append(array_to_append)
