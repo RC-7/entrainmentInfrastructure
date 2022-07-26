@@ -103,20 +103,27 @@ def epoch_artifacts(raw_data, ch_names, threshold=None):
     epochs = []
     diff = np.diff(indices_above_thresh, axis=0)
     start = 0
-    for idx_diff, diff in enumerate(diff):
+    for idx_diff, diff_val in enumerate(diff):
+        end_index = idx_diff == len(diff) - 1
         if start == 0:
             start = indices_above_thresh[idx_diff][0]
-        elif diff != 1:
+        elif diff_val != 1 or end_index:
+            # Need to remove buffer created overlaps
             end_value = indices_above_thresh[idx_diff][0]
             start_epoch = (start - buffer) / sampling_speed
             end_epoch = (end_value + buffer) / sampling_speed
-            array_to_append = [start_epoch, end_epoch]
-            epochs.append(array_to_append)
-            start = 0
+            next_start_value = indices_above_thresh[idx_diff + 1][0]
+            next_start_epoch = next_start_value / sampling_speed
+            print(idx_diff)
+            if next_start_epoch > end_epoch or end_index:
+                array_to_append = [start_epoch, end_epoch]
+                epochs.append(array_to_append)
+                start = 0
     # Group together epochs less than 1 s from one another
     final_epochs = []
     spaced_epoch = []
     grouping_threshold = 1
+    print(epochs)
     for id_epoch, epoch in enumerate(epochs):
         if not spaced_epoch:
             spaced_epoch.append(epoch[0])
