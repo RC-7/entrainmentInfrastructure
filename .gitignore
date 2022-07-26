@@ -62,3 +62,4 @@ __pycache__
 *.png
 *.npy
 data/**/
+data/*.csv

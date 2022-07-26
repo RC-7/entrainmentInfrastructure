@@ -492,6 +492,7 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
         plt.close(fig)
 
 
+# TODO split plot colour by entrainment frequency
 def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', artifact_epochs=None, save=False,
                    filename=None, plot_averaged=False):
     active_row = 0
@@ -538,10 +539,6 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
                     alpha_values.append(abs_power[z, j])
             ave_alpha = np.mean(alpha_values)  # Decide on what to use here
             alpha_average_values.append(ave_alpha)
-        # TODO make dynamic and optional with time periods passed in
-        # artefact_remove = np.where(np.logical_or(np.logical_and(t >= 700, t <= 703),
-        #                                          np.logical_and(t >= 540, t <= 542)))
-        # alpha_average_values = np.delete(alpha_average_values, artefact_remove)
         time_averaged = []
         time_max = []
         time_min = []
@@ -623,18 +620,22 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
             label_max = "{:.4f}".format(ma_avg[y_max_index])
             ax[active_row, active_column].annotate(label_max, (ma_time_global[y_max_index], ma_avg[y_max_index]),
                                                    textcoords="offset points",
-                                                   xytext=(0, 10),
+                                                   xytext=(0, 5),
                                                    ha='left')
+            ax[active_row, active_column].plot(ma_time_global[y_max_index], ma_avg[y_max_index], 'r.')
         if y_min_index != 0 and y_min_index != len(ma_avg) - 1:
             label_min = "{:.4f}".format(ma_avg[y_min_index])
             ax[active_row, active_column].annotate(label_min, (ma_time_global[y_min_index], ma_avg[y_min_index]),
                                                    textcoords="offset points",
                                                    xytext=(0, 10),
                                                    ha='left')
+            ax[active_row, active_column].plot(ma_time_global[y_min_index], ma_avg[y_min_index], 'r.')
         ax[active_row, active_column].annotate(label_end, (x_end, y_end), textcoords="offset points", xytext=(0, 10),
                                                ha='right')
+        ax[active_row, active_column].plot(x_end, y_end, 'r.')
         ax[active_row, active_column].annotate(label_start, (ma_time_global[0], ma_avg[0]), textcoords="offset points", xytext=(0, 10),
                                                ha='left')
+        ax[active_row, active_column].plot(ma_time_global[0], ma_avg[0], 'r.')
         # csv: participantID, dataset name, band filtered to, region, start value, end value, max,
         # min, 3 min, 6 min, 9 min, 12 min,
         csv_write_region = f'{filename.split("_")[0]}, {filename.split("_")[1]}, {band}'
@@ -653,8 +654,9 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
                 csv_write_region += f', {epoch_value}'
                 label_epoch = "{:.4f}".format(epoch_value)
                 ax[active_row, active_column].annotate(label_epoch, (ma_time_global[index], epoch_value),
-                                                       textcoords="offset points", xytext=(0, 10),
+                                                       textcoords="offset points", xytext=(-15, -10),
                                                        ha='left')
+                ax[active_row, active_column].plot(ma_time_global[index], epoch_value, 'r.')
             csv_write_region += "\n"
             text_file = open("power_summary.csv", "a")
             text_file.write(csv_write_region)
