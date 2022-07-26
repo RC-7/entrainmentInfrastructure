@@ -127,7 +127,6 @@ def epoch_artifacts(raw_data, ch_names, threshold=None):
     final_epochs = []
     spaced_epoch = []
     grouping_threshold = 1
-    print(epochs)
     for id_epoch, epoch in enumerate(epochs):
         if not spaced_epoch:
             spaced_epoch.append(epoch[0])

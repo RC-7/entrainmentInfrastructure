@@ -501,6 +501,7 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
     ma_std_global = []
     ma_seventyth_global = []
     ma_time_global = []
+    ml_epochs = []
     data = eeg_data.get_data().transpose()
     for i in electrodes_to_plot:
         data_to_plot = data[np_slice_indexes[i]]
@@ -508,11 +509,11 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
         if artifact_epochs:
             for epoch in artifact_epochs:
                 index_low = math.floor(epoch[0] * SAMPLING_SPEED)
-                index_high = math.floor(epoch[1] * SAMPLING_SPEED)
+                index_high = math.ceil(epoch[1] * SAMPLING_SPEED)
                 data_to_plot = np.delete(data_to_plot, slice(index_low, index_high))
                 samples_removed = index_high - index_low
                 affecting_ml_epoch = False
-                for idx_ml_epoch, ml_epoch in ml_epochs:
+                for idx_ml_epoch, ml_epoch in enumerate(ml_epochs):
                     if affecting_ml_epoch:
                         ml_epochs[idx_ml_epoch] -= samples_removed
                         continue
@@ -634,6 +635,31 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
                                                ha='right')
         ax[active_row, active_column].annotate(label_start, (ma_time_global[0], ma_avg[0]), textcoords="offset points", xytext=(0, 10),
                                                ha='left')
+        # csv: participantID, dataset name, band filtered to, region, start value, end value, max,
+        # min, 3 min, 6 min, 9 min, 12 min,
+        csv_write_region = f'{filename.split("_")[0]}, {filename.split("_")[1]}, {band}'
+        if key == 'T' or key == 'TP':
+            csv_write_region += f', {key}'
+            csv_write_region += f', {ma_avg[0]}'
+            csv_write_region += f', {ma_avg[-1]}'
+            csv_write_region += f', {ma_avg[y_max_index]}'
+            csv_write_region += f', {ma_avg[y_min_index]}'
+            for epoch in ml_epochs:
+                # Fix
+                epoch_in_s = epoch / (512 * 60)
+                index_boolean = [t >= epoch_in_s for t in ma_time_global]
+                index = np.argmax(index_boolean)
+                epoch_value = ma_avg[index]
+                csv_write_region += f', {epoch_value}'
+                label_epoch = "{:.4f}".format(epoch_value)
+                ax[active_row, active_column].annotate(label_epoch, (ma_time_global[index], epoch_value),
+                                                       textcoords="offset points", xytext=(0, 10),
+                                                       ha='left')
+            csv_write_region += "\n"
+            text_file = open("power_summary.csv", "a")
+            text_file.write(csv_write_region)
+            text_file.close()
+
 
 
         # ax[active_row, active_column].plot(mode_avg, label='MA Binned Mode')

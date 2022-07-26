@@ -25,19 +25,26 @@ def main():
     # ds_name = 'pink_audio'
     # participants = ['Full_run_V', 'Full_run_A', 'Full_run_B', 'Full_run_El', 'Full_run_H', 'Full_run_Jasp',
     #                 'Full_run_D', 'Full_run_S', 'Full_run_Zo', 'Full_run_P']
+    text_file = open("power_summary.csv", "w")
+    power_summary_columns = "participantID, dataset name, band filtered to, region, start value," \
+                            " end value, max, min, 3 min, 6 min, 9 min, 12 min\n"
+    text_file.write(power_summary_columns)
+    text_file.close()
     participants = ['Full_run_J']
     test = ['Full_run_V', 'Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D']
-    threshold = 100
+    threshold = 90
     for p in participants:
         min_crop = 40
         if p in test:
-            ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
+            ds_names = ['ml_beta_audio']
+            # ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
             min_crop = 15
         else:
             # ds_names = ['pink_audio']
             ds_names = ['ml_beta_audio']
         file_type = 'hdfs'
-        bands = ['beta', 'alpha']
+        # bands = ['beta', 'alpha']
+        bands = ['beta']
 
         for ds_name in ds_names:
             filename = f'custom_suite/{p}/{ds_name}.h5'
@@ -49,6 +56,8 @@ def main():
                 index_dict[i] = np.index_exp[:, i]
             cropped_data = crop_data(raw, min_crop)
             epochs = epoch_artifacts(cropped_data, ch_names, threshold)
+
+            # view_data(cropped_data)
 
             for band in bands:
 
