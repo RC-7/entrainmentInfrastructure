@@ -494,13 +494,10 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
 
 # TODO split plot colour by entrainment frequency
 def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', artifact_epochs=None, save=False,
-                   filename=None, plot_averaged=False):
+                   filename=None):
     active_row = 0
     active_column = 0
     ma_global = []
-    ma_modal_global = []
-    ma_std_global = []
-    ma_seventyth_global = []
     ma_time_global = []
     ml_epochs = []
     data = eeg_data.get_data().transpose()
@@ -540,64 +537,30 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
             ave_alpha = np.mean(alpha_values)  # Decide on what to use here
             alpha_average_values.append(ave_alpha)
         time_averaged = []
-        time_max = []
-        time_min = []
-        one_std = []
         time_avg = []
-        modal_values = []
-        seventyth_percent = []
         window_averaging = 20
         for j in range(0, len(alpha_average_values), window_averaging):
             if j + window_averaging < len(alpha_average_values):
                 end_index = j + window_averaging
             else:
                 end_index = len(alpha_average_values) - 1
-            # if j > 700 * SAMPLING_SPEED and j < 703 * SAMPLING_SPEED:
-            #     print('skipping region of data')
-            #     j = 703 * SAMPLING_SPEED + 1
-            #     continue
             if j == end_index:
-                # print('its happening')
                 break
             values = alpha_average_values[j:end_index]
             time_values = t[j:end_index]
             time_avg.append(np.mean(time_values))
             time_averaged.append(np.mean(values))
-            # one_std.append(np.mean(values) + np.std(values))
-            # seventyth_percent.append(np.percentile(values, 70))
-            # time_max.append(np.max(values))
-            # time_min.append(np.min(values))
-            # bins = np.linspace(0, np.max(values), 10)
-            # indices = np.digitize(values, bins)
-            # modal_index = mode(indices)
-            # print(modal_index)
-            # modal_midpoint = (bins[modal_index[0] - 1] + bins[modal_index[0] - 2]) / 2
-            # modal_values.append(modal_midpoint[0])
         ma = moving_average(time_averaged, 20)
         ma_time = moving_average(time_avg, 20)
         ma_time = [x / 60 for x in ma_time]
         ma_time_global = ma_time
-        # ma_max = moving_average(time_max, 20)
-        # ma_min = moving_average(time_min, 20)
-        # ma_modal = moving_average(modal_values, 20)
-        # ma_std = moving_average(one_std, 20)
-        # ma_seventyth = moving_average(seventyth_percent, 20)
         ma_global.append(ma)
-        # ma_modal_global.append(ma_modal)
-        # ma_std_global.append(ma_std)
-        # ma_seventyth_global.append(ma_seventyth)
 
     region_averaged_ma = defaultdict(list)
-    region_averaged_modal = defaultdict(list)
-    region_averaged_std = defaultdict(list)
-    region_averaged_seventyth = defaultdict(list)
 
     for j in range(62):
         region = ''.join([k for k in ch_names[j] if not k.isdigit()])
         region_averaged_ma[region].append(ma_global[j])
-        # region_averaged_modal[region].append(ma_modal_global[j])
-        # region_averaged_std[region].append(ma_std_global[j])
-        # region_averaged_seventyth[region].append(ma_seventyth_global[j])
     keys = region_averaged_ma.keys()
     [row, column] = get_subplot_dimensions(keys)
     fig_size = 1 * len(keys)
@@ -606,9 +569,6 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
     fig.tight_layout(pad=1.5)  # edit me when axis labels are added
     for key in region_averaged_ma:
         ma_avg = np.mean(region_averaged_ma[key], axis=0)
-        # mode_avg = np.mean(region_averaged_modal[key], axis=0)
-        # std_avg = np.mean(region_averaged_std[key], axis=0)
-        # seventyth_avg = np.mean(region_averaged_seventyth[key], axis=0)
         ax[active_row, active_column].plot(ma_time_global, ma_avg, label='MA Mean')
         x_end = ma_time_global[-1]
         y_end = ma_avg[-1]
@@ -661,12 +621,6 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
             text_file = open("power_summary.csv", "a")
             text_file.write(csv_write_region)
             text_file.close()
-
-
-
-        # ax[active_row, active_column].plot(mode_avg, label='MA Binned Mode')
-        # ax[active_row, active_column].plot(std_avg, label='MA one std')
-        # ax[active_row, active_column].plot(seventyth_avg, label='MA 70th')
         ax[active_row, active_column].grid()
         ax[active_row, active_column].legend()
         ax[active_row, active_column].set_title(key)
@@ -674,19 +628,10 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
         if active_column == column:
             active_row += 1
             active_column = 0
-
-    # if active_column == column:
-    #     active_row += 1
-    #     active_column = 0
-    # ax[active_row, active_column].title('STFT Magnitude')
-    # ax[active_row, active_column].ylabel('Frequency [Hz]')
-    # ax[active_row, active_column].xlabel('Time [sec]')
     if not save:
         # plt.show()
         pass
     else:
-        # plt.ioff()
-        # plt.show()
         plt.savefig(filename)
         plt.close(fig)
         del fig

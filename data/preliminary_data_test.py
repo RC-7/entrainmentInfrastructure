@@ -80,7 +80,7 @@ def main():
                 # ####################################
                 fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered'
                 stft_by_region(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn,
-                               plot_averaged=True, artifact_epochs=epochs, band=band)
+                               artifact_epochs=epochs, band=band)
 
 
 if __name__ == '__main__':
