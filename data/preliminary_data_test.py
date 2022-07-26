@@ -23,34 +23,36 @@ def main():
     # ds_name = 'beta_audio_retest'
     # ds_name = 'alpha_audio'
     # ds_name = 'pink_audio'
-    # participants = ['Full_run_V', 'Full_run_A', 'Full_run_B', 'Full_run_El', 'Full_run_H', 'Full_run_Jasp',
-    #                 'Full_run_D', 'Full_run_S', 'Full_run_Zo', 'Full_run_P']
+    participants = ['Full_run_V', 'Full_run_A', 'Full_run_B', 'Full_run_El', 'Full_run_H', 'Full_run_Jasp',
+                    'Full_run_D', 'Full_run_S', 'Full_run_Zo', 'Full_run_P']
     text_file = open("power_summary.csv", "w")
     power_summary_columns = "participantID, dataset name, band filtered to, region, start value," \
                             " end value, max, min, 3 min, 6 min, 9 min, 12 min\n"
     text_file.write(power_summary_columns)
     text_file.close()
-    participants = ['Full_run_J']
-    test = ['Full_run_V', 'Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D']
+    # participants = ['Full_run_J']
+    test = ['Full_run_V', 'Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D', 'Full_run_J']
     threshold = 90
     for p in participants:
         min_crop = 40
         if p in test:
-            ds_names = ['ml_beta_audio']
-            # ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
+            # Datasets pending
+            if p == 'Full_run_J':
+                ds_names = ['ml_beta_audio']
+            elif p == 'Full_run_V':
+                ds_names = ['beta_audio']
+            else:
+                ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
             min_crop = 15
         else:
-            # ds_names = ['pink_audio']
-            ds_names = ['ml_beta_audio']
+            ds_names = ['pink_audio']
         file_type = 'hdfs'
-        # bands = ['beta', 'alpha']
-        bands = ['beta']
+        bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
 
         for ds_name in ds_names:
             filename = f'custom_suite/{p}/{ds_name}.h5'
             [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='')
             electrodes_to_plot = [x for x in range(62)]
-            # electrodes_to_plot = [0, 10, 20, 30, 40, 51]
             index_dict = {}
             for i in electrodes_to_plot:
                 index_dict[i] = np.index_exp[:, i]
@@ -64,7 +66,6 @@ def main():
                 [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope=band)
                 cropped_data = crop_data(raw, min_crop)
 
-                # view_data(cropped_data)
                 # #####################################
                 # ##########  Connectivity  ###########
                 # #####################################
@@ -78,7 +79,7 @@ def main():
                 # ####################################
                 # #############  Power  ##############
                 # ####################################
-                fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered'
+                fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power'
                 stft_by_region(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn,
                                artifact_epochs=epochs, band=band)
 

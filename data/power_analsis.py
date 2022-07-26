@@ -526,27 +526,33 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
         overlap = 10
         f, t, Zxx = signal.stft(x=data_to_plot, fs=SAMPLING_SPEED, nperseg=samples_per_ft, noverlap=overlap, nfft=512)
         abs_power = np.abs(Zxx)
-        alpha_average_values = []
+        band_averaged_values = []
         for j in range(len(abs_power[0])):
-            alpha_values = []
+            band_values = []
             for z in range(len(f)):
                 if 28 >= f[z] >= 15 and band == 'beta':
-                    alpha_values.append(abs_power[z, j])
+                    band_values.append(abs_power[z, j])
                 if 13 >= f[z] >= 8 and band == 'alpha':
-                    alpha_values.append(abs_power[z, j])
-            ave_alpha = np.mean(alpha_values)  # Decide on what to use here
-            alpha_average_values.append(ave_alpha)
+                    band_values.append(abs_power[z, j])
+                if 8 >= f[z] >= 4 and band == 'theta':
+                    band_values.append(abs_power[z, j])
+                if 25 >= f[z] >= 23 and band == 'beta_entrain':
+                    band_values.append(abs_power[z, j])
+                if 19 >= f[z] >= 17 and band == 'beta_entrain_low':
+                    band_values.append(abs_power[z, j])
+            ave_alpha = np.mean(band_values)  # Decide on what to use here
+            band_averaged_values.append(ave_alpha)
         time_averaged = []
         time_avg = []
         window_averaging = 20
-        for j in range(0, len(alpha_average_values), window_averaging):
-            if j + window_averaging < len(alpha_average_values):
+        for j in range(0, len(band_averaged_values), window_averaging):
+            if j + window_averaging < len(band_averaged_values):
                 end_index = j + window_averaging
             else:
-                end_index = len(alpha_average_values) - 1
+                end_index = len(band_averaged_values) - 1
             if j == end_index:
                 break
-            values = alpha_average_values[j:end_index]
+            values = band_averaged_values[j:end_index]
             time_values = t[j:end_index]
             time_avg.append(np.mean(time_values))
             time_averaged.append(np.mean(values))
