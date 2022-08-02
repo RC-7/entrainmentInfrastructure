@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from power_analsis import stft_test, stft_by_region
+from power_analysis import stft_test, stft_by_region
 from mne_wrapper import generate_mne_raw_with_info
 from generic_analysis import create_x_values
 import os
@@ -32,27 +32,29 @@ def main():
     #                         " end value, max, min, 3 min, 6 min, 9 min, 12 min\n"
     # text_file.write(power_summary_columns)
     # text_file.close()
-    participants = ['Full_run_S', 'Full_run_Jasp', 'Full_run_D', 'Full_run_J']
-    test = ['Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D', 'Full_run_J']
+    participants = ['Full_run_T']
+    test = ['Full_run_V', 'Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D', 'Full_run_J', 'Full_run_T']
     threshold = 90
     for p in participants:
+        # TODO incorporate crop into 3 min buckets
         min_crop = 40
         if p in test:
             # Datasets pending
-            if p == 'Full_run_J':
-                ds_names = ['ml_beta_audio']
-                min_crop = 20
+            if p == 'Full_run_T':
+                ds_names = ['beta_audio', 'pink_audio']
+                min_crop = 40
             elif p == 'Full_run_V':
                 ds_names = ['beta_audio']
+                min_crop = 60
             else:
-                # ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
-                ds_names = ['ml_beta_audio']
+                ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
+                # ds_names = ['ml_beta_audio']
                 min_crop = 15
         else:
             ds_names = ['pink_audio']
         file_type = 'hdfs'
-        # bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
-        bands = ['beta']
+        bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
+        # bands = ['beta']
 
         for ds_name in ds_names:
             if ds_name == 'beta_audio':
