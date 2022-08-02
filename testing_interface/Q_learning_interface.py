@@ -88,7 +88,7 @@ class QLearningInterface(AbstractMlInterface):
     # Pass in all EEG data to get new Q values and iterate entrainment
     def update_model_and_entrainment(self, data):
         print('Updating Machine learning model')
-        reward, state = self.analyser.get_features_and_reward(data)
+        reward, state = self.analyser.get_features_and_reward(data, self.current_entrainment)
         if self.current_index != '':
             new_state = state + '_' + self.current_entrainment
             self.bellmans(new_state, reward)
@@ -146,7 +146,7 @@ class QLearningInterface(AbstractMlInterface):
             action = str(choice(self.actions))
             return action
         else:
-            action = str(self.model.loc[state].idxmax(axis=1))
+            action = str(self.model.loc[state].idxmax(axis=0))
             return action
 
     def update_epsilon(self):
