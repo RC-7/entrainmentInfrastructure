@@ -42,7 +42,7 @@ def generate_mne_raw_with_info(file_type, file_path, reference=False, scope=''):
     if scope == 'beta_entrain':
         raw.filter(l_freq=23, h_freq=25)
     if scope == 'beta_entrain_low':
-        raw.filter(l_freq=19, h_freq=17)
+        raw.filter(l_freq=17, h_freq=19)
     if scope == 'alpha_entrain':
         raw.filter(l_freq=10, h_freq=12)
     if scope == 'theta_entrain':
