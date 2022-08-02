@@ -403,7 +403,8 @@ def extract_averages(raw_data_values, window_averaging=20):
     return time_averaged, time_max, time_min, one_std, modal_values, seventyth_percent
 
 
-def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None, plot_averaged=False):
+def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None, plot_averaged=False,
+              band='beta'):
     active_row = 0
     active_column = 0
     [row, column] = get_subplot_dimensions(electrodes_to_plot)
@@ -421,12 +422,19 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
             abs_power = np.abs(Zxx)
             alpha_average_values = []
             for j in range(len(abs_power[0])):
-                alpha_values = []
+                band_values = []
                 for z in range(len(f)):
-                    if 26 >= f[z] >= 20:
-                        # if 13 >= f[z] >= 8:
-                        alpha_values.append(abs_power[z, j])
-                ave_alpha = np.mean(alpha_values)  # Decide on what to use here
+                    if 28 >= f[z] >= 15 and band == 'beta':
+                        band_values.append(abs_power[z, j])
+                    if 13 >= f[z] >= 8 and band == 'alpha':
+                        band_values.append(abs_power[z, j])
+                    if 8 >= f[z] >= 4 and band == 'theta':
+                        band_values.append(abs_power[z, j])
+                    if 25 >= f[z] >= 23 and band == 'beta_entrain':
+                        band_values.append(abs_power[z, j])
+                    if 19 >= f[z] >= 17 and band == 'beta_entrain_low':
+                        band_values.append(abs_power[z, j])
+                ave_alpha = np.mean(band_values)  # Decide on what to use here
                 alpha_average_values.append(ave_alpha)
             time_averaged = []
             time_max = []
