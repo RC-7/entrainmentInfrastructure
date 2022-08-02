@@ -65,7 +65,6 @@ class QLearningInterface(AbstractMlInterface):
             'timestamp': str(datetime.datetime.now(datetime.timezone.utc)),
             'session': '2'
         }
-        # Commented for testing 
         self.mi.send_data(data_type, data)
 
     def update_entrainment(self, state):
@@ -113,16 +112,11 @@ class QLearningInterface(AbstractMlInterface):
         self.step = self.model_parameters['step']
 
     def get_parameters(self):
-        model_parameters = {}
-        model_parameters['states'] = self.states
-        model_parameters['actions'] = self.actions
-        model_parameters['epsilon'] = self.epsilon
-        model_parameters['learning_rate'] = self.learning_rate
-        model_parameters['discount_factor'] = self.discount_factor
-        model_parameters['step'] = self.step
+        model_parameters = {'states': self.states, 'actions': self.actions, 'epsilon': self.epsilon,
+                            'learning_rate': self.learning_rate, 'discount_factor': self.discount_factor,
+                            'step': self.step}
         return model_parameters
 
-    # Pass model perameters as a dict of state and action arrays
     def create_model(self):
         print('creating new model!!')
         self.read_parameters()
@@ -134,8 +128,6 @@ class QLearningInterface(AbstractMlInterface):
 
         self.model = pd.DataFrame(data, index=self.states)
         print(self.model)
-        # print(self.model.loc['up_24'][24])
-        # print(self.model.loc['up_24'].idxmax(axis=1))
 
     def policy_function(self, state):
         rand_value = random()
