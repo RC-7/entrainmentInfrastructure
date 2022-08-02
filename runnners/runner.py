@@ -45,7 +45,8 @@ if args.framework == 'tf':
         my_parser.error(message)
         # TODO Add check to see what images are around
     if args.action != 'apply':
-        command_to_run = "docker run --rm experiment_setup init && terraform {action}".format(action=args.action)
+        command_to_run = "docker run --rm experiment_setup init && terraform -chdir=../AWS_IaC  {action}"\
+            .format(action=args.action)
         os.system(command_to_run)
     else:
         AWS_ACCESS_KEY_ID = os.popen("aws --profile default configure get aws_access_key_id").read().rstrip()
