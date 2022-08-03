@@ -46,7 +46,7 @@ tic = time.perf_counter()
 q_learn.update_model_and_entrainment(eeg_data)
 toc = time.perf_counter()
 print(f"Data handling thread tood: {toc - tic:0.4f} seconds")
-q_learn.save_model()
+# q_learn.save_model()
 #
 # print(q_learn.model)
 # samples = hf['raw_data']

@@ -1,1 +1,1 @@
-{"states": ["up_24", "down_24", "up_18", "down_18"], "actions": ["24", "18"], "epsilon": 0.8205555555555555, "learning_rate": 0.2, "discount_factor": 0.4, "step": 20}
+{"states": ["up_24", "down_24", "up_18", "down_18"], "actions": ["24", "18"], "epsilon": 0, "learning_rate": 0.2, "discount_factor": 0.4, "step": 0}

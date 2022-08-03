@@ -19,6 +19,10 @@ class QLearningInterface(AbstractMlInterface):
         self.learning_rate = 1
         self.discount_factor = 1
         self.step = 0
+        # Decaying epsilon constants
+        self.n_epsilon = 20
+        self.pend = 0.15
+        self.pinit = 1
         self.model_path = model_path
         self.model_name = model_name
         self.participantID = participantID
@@ -28,7 +32,6 @@ class QLearningInterface(AbstractMlInterface):
         self.actions_taken = pd.DataFrame()
         self.current_index = ''
         self.analyser = Analysis()
-        #  TODO check make dynamic
         self.entrainmentLookup = {
             '24': 21,
             '18': 20
@@ -70,12 +73,12 @@ class QLearningInterface(AbstractMlInterface):
     def update_entrainment(self, state):
         # Has last action and persists it
         state_index = state + '_' + str(self.current_entrainment)
-        print(f'state index: {state_index}')
+        print(f'State index: {state_index}')
         action = self.policy_function(state_index)
-        print(f'state index: {action}')
+        print(f'Next action: {action}')
         self.current_entrainment = action
         self.current_index = state_index
-        self.set_entrainment_DB_item(action)
+        # self.set_entrainment_DB_item(action)
         epoched_values = {
             'state': state,
             'action': action,
@@ -131,9 +134,8 @@ class QLearningInterface(AbstractMlInterface):
 
     def policy_function(self, state):
         rand_value = random()
-        # force_explore = (self.model.loc[state].values == 0).any()
-
-        self.update_epsilon()
+        if self.epsilon != 0 and self.epsilon != self.pend:
+            self.update_epsilon()
         if rand_value <= self.epsilon:
             action = str(choice(self.actions))
             return action
@@ -142,11 +144,8 @@ class QLearningInterface(AbstractMlInterface):
             return action
 
     def update_epsilon(self):
-        n = 90
-        pinit = 1
-        pend = 0.15
-        r = max((n - self.step) / n, 0)
-        self.epsilon = (pinit - pend) * r + pend
+        r = max((self.n_epsilon - self.step) / self.n_epsilon, 0)
+        self.epsilon = (self.pinit - self.pend) * r + self.pend
         self.step += 1
 
     def save_model(self):
