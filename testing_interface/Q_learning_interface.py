@@ -78,7 +78,7 @@ class QLearningInterface(AbstractMlInterface):
         print(f'Next action: {action}')
         self.current_entrainment = action
         self.current_index = state_index
-        # self.set_entrainment_DB_item(action)
+        self.set_entrainment_DB_item(action)
         epoched_values = {
             'state': state,
             'action': action,

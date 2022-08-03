@@ -6,7 +6,7 @@ from math import floor
 model_parameters = {
     "states":  ['up_24', 'down_24', 'up_18', 'down_18'],
     'actions': ['24', '18'],
-    "epsilon": 0,
+    "epsilon": 1,
     "learning_rate": 0.2,
     "discount_factor": 0.4,
     "step": 0
