@@ -1,6 +1,6 @@
 import math
 
-from constants import ch_names, eeg_bands, SAMPLING_SPEED, ch_hemisphere
+from constants import ch_names, eeg_bands, SAMPLING_SPEED, ch_hemisphere, power_analysis_file
 from scipy import signal
 import numpy as np
 from util import get_subplot_dimensions, setup_figure, moving_average, figure_handling
@@ -644,7 +644,7 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
                                                            ha='left')
                     ax[active_row, active_column].plot(ma_time_global[index], epoch_value, 'r.')
             csv_write_region += "\n"
-            text_file = open("power_summary.csv", "a")
+            text_file = open(power_analysis_file, "a")
             text_file.write(csv_write_region)
             text_file.close()
         if save_plot:

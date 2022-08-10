@@ -14,3 +14,5 @@ eeg_bands = {'Delta': (0.5, 4),
 SAMPLING_SPEED = 512
 
 ch_hemisphere = get_hemisphere(ch_names)
+
+power_analysis_file = 'power_summary.csv'

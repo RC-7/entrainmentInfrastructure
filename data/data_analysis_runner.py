@@ -8,7 +8,7 @@ import os
 from util import crop_data, view_data, epoch_artifacts
 from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_locking_value, degree, networkx_analysis, \
     small_world
-from constants import ch_names
+from constants import ch_names, power_analysis_file
 
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
@@ -27,7 +27,7 @@ def main():
     #                 'Full_run_D', 'Full_run_S', 'Full_run_Zo', 'Full_run_P', 'Full_run_J']
     # TODO NEED to pull actions and state into a set of csv files so that can analyse together!
     # TODO Then can also do a meta analysis of that and other csv produced
-    # text_file = open("power_summary.csv", "w")
+    # text_file = open(power_analysis_file, "w")
     # power_summary_columns = "participantID, dataset name, band filtered to, region, start value," \
     #                         " end value, max, min, 3 min, 6 min, 9 min, 12 min\n"
     # text_file.write(power_summary_columns)
