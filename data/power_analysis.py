@@ -501,8 +501,8 @@ def stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filena
 
 
 # TODO split plot colour by entrainment frequency
-def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', artifact_epochs=None, save=False,
-                   filename=None):
+def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', artifact_epochs=None, save_plot=False,
+                   filename=None, save_values=False):
     active_row = 0
     active_column = 0
     ma_global = []
@@ -575,50 +575,61 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
     for j in range(62):
         region = ''.join([k for k in ch_names[j] if not k.isdigit()])
         region_averaged_ma[region].append(ma_global[j])
-    keys = region_averaged_ma.keys()
-    [row, column] = get_subplot_dimensions(keys)
-    fig_size = 1 * len(keys)
-    fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
-    fig.tight_layout(pad=0.5)  # edit me when axis labels are added
-    fig.tight_layout(pad=1.5)  # edit me when axis labels are added
+    if save_plot:
+        keys = region_averaged_ma.keys()
+        [row, column] = get_subplot_dimensions(keys)
+        fig_size = 1 * len(keys)
+        fig, ax = plt.subplots(row, column, figsize=(fig_size, fig_size))
+        fig.tight_layout(pad=0.5)  # edit me when axis labels are added
+        fig.tight_layout(pad=1.5)  # edit me when axis labels are added
     for key in region_averaged_ma:
         ma_avg = np.mean(region_averaged_ma[key], axis=0)
-        ax[active_row, active_column].plot(ma_time_global, ma_avg, label='MA Mean')
         x_end = ma_time_global[-1]
         y_end = ma_avg[-1]
         y_max_index = np.argmax(ma_avg)
         y_min_index = np.argmin(ma_avg)
         label_end = "{:.4f}".format(y_end)
         label_start = "{:.4f}".format(ma_avg[0])
-        if y_max_index != 0 and y_max_index != len(ma_avg) - 1:
-            label_max = "{:.4f}".format(ma_avg[y_max_index])
-            ax[active_row, active_column].annotate(label_max, (ma_time_global[y_max_index], ma_avg[y_max_index]),
-                                                   textcoords="offset points",
-                                                   xytext=(0, 5),
+        if save_plot:
+            ax[active_row, active_column].plot(ma_time_global, ma_avg, label='MA Mean')
+            if y_max_index != 0 and y_max_index != len(ma_avg) - 1:
+                label_max = "{:.4f}".format(ma_avg[y_max_index])
+                ax[active_row, active_column].annotate(label_max, (ma_time_global[y_max_index], ma_avg[y_max_index]),
+                                                       textcoords="offset points",
+                                                       xytext=(0, 5),
+                                                       ha='left')
+                ax[active_row, active_column].plot(ma_time_global[y_max_index], ma_avg[y_max_index], 'r.')
+            if y_min_index != 0 and y_min_index != len(ma_avg) - 1:
+                label_min = "{:.4f}".format(ma_avg[y_min_index])
+                ax[active_row, active_column].annotate(label_min, (ma_time_global[y_min_index], ma_avg[y_min_index]),
+                                                       textcoords="offset points",
+                                                       xytext=(0, 10),
+                                                       ha='left')
+                ax[active_row, active_column].plot(ma_time_global[y_min_index], ma_avg[y_min_index], 'r.')
+            ax[active_row, active_column].annotate(label_end, (x_end, y_end), textcoords="offset points", xytext=(0, 10),
+                                                   ha='right')
+            ax[active_row, active_column].plot(x_end, y_end, 'r.')
+            ax[active_row, active_column].annotate(label_start, (ma_time_global[0], ma_avg[0]), textcoords="offset points", xytext=(0, 10),
                                                    ha='left')
-            ax[active_row, active_column].plot(ma_time_global[y_max_index], ma_avg[y_max_index], 'r.')
-        if y_min_index != 0 and y_min_index != len(ma_avg) - 1:
-            label_min = "{:.4f}".format(ma_avg[y_min_index])
-            ax[active_row, active_column].annotate(label_min, (ma_time_global[y_min_index], ma_avg[y_min_index]),
-                                                   textcoords="offset points",
-                                                   xytext=(0, 10),
-                                                   ha='left')
-            ax[active_row, active_column].plot(ma_time_global[y_min_index], ma_avg[y_min_index], 'r.')
-        ax[active_row, active_column].annotate(label_end, (x_end, y_end), textcoords="offset points", xytext=(0, 10),
-                                               ha='right')
-        ax[active_row, active_column].plot(x_end, y_end, 'r.')
-        ax[active_row, active_column].annotate(label_start, (ma_time_global[0], ma_avg[0]), textcoords="offset points", xytext=(0, 10),
-                                               ha='left')
-        ax[active_row, active_column].plot(ma_time_global[0], ma_avg[0], 'r.')
+            ax[active_row, active_column].plot(ma_time_global[0], ma_avg[0], 'r.')
         # csv: participantID, dataset name, band filtered to, region, start value, end value, max,
         # min, 3 min, 6 min, 9 min, 12 min,
         csv_write_region = f'{filename.split("_")[0]}, {filename.split("_")[1]}, {band}'
-        if key == 'T' or key == 'TP':
+        if key == 'T' or key == 'TP' or key == 'FT':
             csv_write_region += f', {key}'
             csv_write_region += f', {ma_avg[0]}'
             csv_write_region += f', {ma_avg[-1]}'
             csv_write_region += f', {ma_avg[y_max_index]}'
             csv_write_region += f', {ma_avg[y_min_index]}'
+
+            if save_values:
+                # np save
+                array_to_save = [ma_time_global, ma_avg]
+                np_ds_filename_data = f'stft_region_averaged/ft_values/{filename}'
+                np.save(np_ds_filename_data, array_to_save)
+                np_ds_filename_epochs = f'stft_region_averaged/epochs/{filename}'
+                np.save(np_ds_filename_epochs, ml_epochs)
+
             for epoch in ml_epochs:
                 # Fix
                 epoch_in_s = epoch / (512 * 60)
@@ -627,25 +638,24 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
                 epoch_value = ma_avg[index]
                 csv_write_region += f', {epoch_value}'
                 label_epoch = "{:.4f}".format(epoch_value)
-                ax[active_row, active_column].annotate(label_epoch, (ma_time_global[index], epoch_value),
-                                                       textcoords="offset points", xytext=(-15, -10),
-                                                       ha='left')
-                ax[active_row, active_column].plot(ma_time_global[index], epoch_value, 'r.')
+                if save_plot:
+                    ax[active_row, active_column].annotate(label_epoch, (ma_time_global[index], epoch_value),
+                                                           textcoords="offset points", xytext=(-15, -10),
+                                                           ha='left')
+                    ax[active_row, active_column].plot(ma_time_global[index], epoch_value, 'r.')
             csv_write_region += "\n"
             text_file = open("power_summary.csv", "a")
             text_file.write(csv_write_region)
             text_file.close()
-        ax[active_row, active_column].grid()
-        ax[active_row, active_column].legend()
-        ax[active_row, active_column].set_title(key)
-        active_column += 1
-        if active_column == column:
-            active_row += 1
-            active_column = 0
-    if not save:
-        # plt.show()
-        pass
-    else:
+        if save_plot:
+            ax[active_row, active_column].grid()
+            ax[active_row, active_column].legend()
+            ax[active_row, active_column].set_title(key)
+            active_column += 1
+            if active_column == column:
+                active_row += 1
+                active_column = 0
+    if save_plot:
         plt.savefig(filename)
         plt.close(fig)
         del fig

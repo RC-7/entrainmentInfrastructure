@@ -33,32 +33,42 @@ def main():
     # text_file.write(power_summary_columns)
     # text_file.close()
     participants = ['Full_run_T']
+    # participants = ['Full_run_El', 'Full_run_P', 'Full_run_H', 'Full_run_Zo', 'Full_run_S', 'Full_run_A',
+    #                 'Full_run_Jasp', 'Full_run_B']
+    # participants = ['Full_run_T', 'Full_run_V', 'Full_run_St', 'Full_run_J', 'Full_run_D', 'Full_run_El', 'Full_run_P',
+    #                 'Full_run_H', 'Full_run_Zo', 'Full_run_S', 'Full_run_A', 'Full_run_Jasp', 'Full_run_B']
     test = ['Full_run_V', 'Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D', 'Full_run_J', 'Full_run_T']
     threshold = 90
     for p in participants:
         # TODO incorporate crop into 3 min buckets
-        min_crop = 40
+        min_crop = 0
+        max_crop = None
+        # TODO Scope to datasets
+        if p == 'Full_run_St' or p == 'Full_run_D':
+            max_crop = 60 * 13
         if p in test:
             # Datasets pending
-            if p == 'Full_run_T':
-                ds_names = ['beta_audio', 'pink_audio']
-                min_crop = 40
-            elif p == 'Full_run_V':
-                ds_names = ['beta_audio']
+            # if p == 'Full_run_T':
+            #     ds_names = ['beta_audio', 'pink_audio']
+            #     min_crop = 40
+            if p == 'Full_run_V':
+                # ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
                 min_crop = 60
             else:
-                ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
-                # ds_names = ['ml_beta_audio']
+                # ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
+                ds_names = ['ml_beta_audio']
                 min_crop = 15
         else:
             ds_names = ['pink_audio']
         file_type = 'hdfs'
-        bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
-        # bands = ['beta']
+        # bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
+        bands = ['beta']
 
         for ds_name in ds_names:
             if ds_name == 'beta_audio':
                 min_crop = 40
+            if ds_name == 'beta_audio' and p == 'Full_run_V':
+                min_crop = 60
             if ds_name == 'ml_beta_audio':
                 min_crop = 15
             if ds_name == 'pink_audio' and p not in test:
@@ -71,16 +81,22 @@ def main():
             index_dict = {}
             for i in electrodes_to_plot:
                 index_dict[i] = np.index_exp[:, i]
-            cropped_data = crop_data(raw, min_crop)
+            cropped_data = crop_data(raw, min_crop, max_crop)
             epochs = epoch_artifacts(cropped_data, ch_names, threshold)
 
-            # view_data(cropped_data)
-
             for band in bands:
+                # if p == 'Full_run_T' and ds_name in ['ml_beta_audio', 'beta_audio'] and band in ['beta', 'alpha',
+                #                                                                                  'beta_entrain']:
+                #     save_plot = False
+                if p in ['Full_run_V', 'Full_run_D', 'Full_run_El', 'Full_run_P', 'Full_run_H',
+                         'Full_run_Zo', 'Full_run_S', 'Full_run_A', 'Full_run_Jasp', 'Full_run_B', 'Full_run_T']:
+                    save_plot = False
+                else:
+                    save_plot = True
 
                 [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope=band)
-                cropped_data = crop_data(raw, min_crop)
-
+                cropped_data = crop_data(raw, min_crop, max_crop)
+                # view_data(cropped_data)
                 # #####################################
                 # ##########  Connectivity  ###########
                 # #####################################
@@ -94,12 +110,13 @@ def main():
                 # ####################################
                 # #############  Power  ##############
                 # ####################################
-                # fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power'
-                # stft_by_region(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn,
-                #                artifact_epochs=epochs, band=band)
-                fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power_no_avg'
-                stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn, plot_averaged=True,
-                          band=band)
+                fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power'
+                # TODO account for cropping time
+                stft_by_region(cropped_data, electrodes_to_plot, index_dict, save_plot=save_plot, filename=fn,
+                               artifact_epochs=epochs, band=band, save_values=True)
+                # fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power_no_avg'
+                # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn, plot_averaged=True,
+                #           band=band)
 
 
 if __name__ == '__main__':
