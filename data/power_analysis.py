@@ -683,6 +683,38 @@ def analyse_power_values(filename, band, group, dataset):
         text_file.close()
 
 
+def record_action_order():
+    test_participant_order = ['S', 'A', 'J', 'D', 'V', 'T']
+    action_times_columns = ['participant_ID', '0', '3', '6', '9', '12', '15']
+    action_times = ['0', '3', '6', '9', '12', '15']
+    actions_taken = pd.DataFrame(columns=action_times_columns)
+    optimal_actions_taken = pd.DataFrame(columns=action_times_columns)
+    model_file = '../data/models/bciAgent_5'
+    model = pd.read_csv(model_file, index_col=0)
+    for idx, p in enumerate(test_participant_order):
+        actions_file = f'../data/models/bciAgent_{idx}_actions.csv'
+        actions = pd.read_csv(actions_file)
+        actions_dict = {'participant_ID': p, action_times[0]: '24'}
+        optimal_actions_dict = {'participant_ID': p, action_times[0]: 0}
+        previous_action = '24'
+        for j in range(0, len(action_times) - 1):
+            action_taken = actions.loc[j]['action']
+            actions_dict[action_times[j+1]] = action_taken
+            index_state = f'{actions.loc[j]["state"]}_{previous_action}'
+            optimal_action = str(model.loc[index_state].idxmax(axis=0))
+            previous_action = action_taken
+            if str(action_taken) == optimal_action:
+                optimal_actions_dict[action_times[j+1]] = 1
+            else:
+                optimal_actions_dict[action_times[j + 1]] = 0
+        actions_taken = actions_taken.append(actions_dict, ignore_index=True)
+        optimal_actions_taken = optimal_actions_taken.append(optimal_actions_dict, ignore_index=True)
+    optimal_actions_taken['optimal_actions'] = optimal_actions_taken[action_times[0:-1]].sum(axis=1)
+
+    actions_taken.to_csv('meta_analysis/actions_taken', index=False)
+    optimal_actions_taken.to_csv('meta_analysis/optimal_actions_taken', index=False)
+
+
 def analyse_power_results():
     power_df = pandas.read_csv(power_analysis_file, skipinitialspace=True)
     # columns = ['participantID', 'dataset', 'band', 'region', 'start', 'end', 'max', 'min', 'three_min',
