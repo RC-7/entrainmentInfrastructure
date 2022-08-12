@@ -2,7 +2,7 @@ import math
 
 import pandas
 
-from constants import ch_names, eeg_bands, SAMPLING_SPEED, ch_hemisphere, power_analysis_file
+from constants import ch_names, eeg_bands, SAMPLING_SPEED, ch_hemisphere, power_analysis_file, percentage_power_analysis_file
 from scipy import signal
 import numpy as np
 from util import get_subplot_dimensions, setup_figure, moving_average, figure_handling
@@ -628,9 +628,9 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
             if save_values:
                 # np save
                 array_to_save = [ma_time_global, ma_avg]
-                np_ds_filename_data = f'stft_region_averaged/ft_values/{filename}'
+                np_ds_filename_data = f'stft_region_averaged/ft_values/{filename}_{key}'
                 np.save(np_ds_filename_data, array_to_save)
-                np_ds_filename_epochs = f'stft_region_averaged/epochs/{filename}'
+                np_ds_filename_epochs = f'stft_region_averaged/epochs/{filename}_{key}'
                 np.save(np_ds_filename_epochs, ml_epochs)
 
             for epoch in ml_epochs:
@@ -664,6 +664,25 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
         del fig
 
 
+def analyse_power_values(filename, band, group, dataset):
+
+    regions = ['T', 'TP', 'FT']
+    for region in regions:
+        data_to_save = f'{filename.split("_")[0]}, {dataset.split("_")[0]}, {band}, {group}, {region}, '
+        np_ds_filename_data = f'stft_region_averaged/ft_values/{filename}_{region}.npy'
+        power_values = np.load(np_ds_filename_data, allow_pickle=True)[1]
+        count = 0
+        for val in power_values:
+            if val > power_values[0]:
+                count += 1
+        data_to_save += str(count/len(power_values)*100)
+        data_to_save +='\n'
+
+        text_file = open(percentage_power_analysis_file, "a")
+        text_file.write(data_to_save)
+        text_file.close()
+
+
 def analyse_power_results():
     power_df = pandas.read_csv(power_analysis_file, skipinitialspace=True)
     # columns = ['participantID', 'dataset', 'band', 'region', 'start', 'end', 'max', 'min', 'three_min',
@@ -673,6 +692,8 @@ def analyse_power_results():
     test = ['V', 'A', 'S', 'D', 'J', 'T']
     control = ['B', 'El', 'Zo', 'H', 'P', 'St']
     bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
+
+    power_df['group'] = power_df['participantID'].apply(lambda x: 'test' if x in test else 'control')
 
     power_df['overall'] = power_df['end'] - power_df['start']
 
@@ -701,6 +722,13 @@ def analyse_power_results():
                                                   , 'increased_start_twelve', 'increased_three_six',
                                                   'increased_six_nine', 'increased_nine_twelve',
                                                   'increased_twelve_fifteen'])
+
+    # power_change_columns = power_df[['start_three', 'start_six', 'start_nine', 'start_twelve', 'three_six',
+    #                                  'six_nine', 'nine_twelve', 'twelve_fifteen', 'increased_overall',
+    #                                  'increased_start_three', 'increased_start_six', 'increased_start_nine',
+    #                                  'increased_start_twelve', 'increased_three_six', 'increased_six_nine',
+    #                                  'increased_nine_twelve', 'increased_twelve_fifteen']]
+
     increased_count = ['increased_overall', 'increased_start_three', 'increased_start_six', 'increased_start_nine',
                        'increased_start_twelve', 'increased_three_six', 'increased_six_nine', 'increased_nine_twelve',
                        'increased_twelve_fifteen']
@@ -756,10 +784,11 @@ def analyse_power_results():
                     'std_end': test_group_dataset_scoped[['end']].std().values[0],
                     'mean_abs_diff': test_group_dataset_scoped[['overall']].abs().mean().values[0],
                     'std_abs_diff': test_group_dataset_scoped[['overall']].abs().std().values[0],
-                    'region': regions
+                    'region': region
                 }
                 statistics_across = statistics_across.append(values, ignore_index=True)
-            control_group = test_specific_data[test_specific_data.participantID.isin(control)]
+            control_group = test_specific_data[test_specific_data.participantID.isin(control) &
+                                               (test_specific_data.band == band)]
             control_group_dataset_scoped = control_group[control_group.dataset_name == 'pink']
 
             values = {
@@ -772,19 +801,28 @@ def analyse_power_results():
                 'std_end': control_group_dataset_scoped[['end']].std().values[0],
                 'mean_abs_diff': control_group_dataset_scoped[['overall']].abs().mean().values[0],
                 'std_abs_diff': control_group_dataset_scoped[['overall']].abs().std().values[0],
-                'region': regions
+                'region': region
             }
             statistics_across = statistics_across.append(values, ignore_index=True)
 
     for band in bands:
         band_filtered = increasing_electrodes[increasing_electrodes.band == band]
         band_filtered = band_filtered.sort_values(by=['dataset', 'group'])
-        band_filtered.to_csv(f"meta_analysis/{band}_increasingCount", index=True)
+        band_filtered.to_csv(f"meta_analysis/{band}_increasingCount", index=False)
 
-        statistics_across = statistics_across[statistics_across.band == band]
-        statistics_across = statistics_across.sort_values(by=['dataset', 'group'])
-        statistics_across.to_csv(f"meta_analysis/{band}_stats", index=True)
-    # print(increasing_electrodes)
+        statistics_across_band_filtered = statistics_across[statistics_across.band == band]
+        statistics_across_band_filtered = statistics_across_band_filtered.sort_values(by=['dataset', 'group'])
+        statistics_across_band_filtered.to_csv(f"meta_analysis/{band}_stats", index=False)
+
+        power_change_columns = power_df[['participantID', 'dataset_name', 'band', 'group', 'start_three', 'start_six', 'start_nine', 'start_twelve', 'three_six',
+                                         'six_nine', 'nine_twelve', 'twelve_fifteen', 'increased_overall',
+                                         'increased_start_three', 'increased_start_six', 'increased_start_nine',
+                                         'increased_start_twelve', 'increased_three_six', 'increased_six_nine',
+                                         'increased_nine_twelve', 'increased_twelve_fifteen']]
+        power_change_filtered = power_change_columns[power_change_columns.band == band]
+        power_change_sorted = power_change_filtered.sort_values(by=['dataset_name', 'group'])
+        power_change_sorted.to_csv(f"meta_analysis/{band}_delta", index=False)
+
 
 
 def alpha_band_stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None):
