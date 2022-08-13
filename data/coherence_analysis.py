@@ -1,9 +1,10 @@
+import math
 from collections import defaultdict
 
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_squared_error
 
-from constants import ch_names, eeg_bands, SAMPLING_SPEED, ch_hemisphere
+from constants import ch_names, eeg_bands, SAMPLING_SPEED, ch_hemisphere, coherence_analysis_file, percentage_coherence_analysis_file
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import coherence, get_window
@@ -135,21 +136,46 @@ def correl_coeff_set(raw_data, method='coeff', save_fig=False, filename='', time
     figure_handling(fig, filename, save_fig)
 
 
-def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=False, filename=None, ratio=False):
+def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=False, filename=None, ratio=False,
+                        artifact_epochs=None):
     raw_data = raw_data.get_data().transpose()
     max_sample = len(raw_data[:, 0])
     window = 1024
     instantaneous_phase_global = defaultdict(list)
+    ml_epochs = [x * SAMPLING_SPEED * 3 * 60 for x in range(1, 5)]
+    if artifact_epochs:
+        for epoch in artifact_epochs:
+            index_low = math.floor(epoch[0] * SAMPLING_SPEED)
+            index_high = math.ceil(epoch[1] * SAMPLING_SPEED)
+            # data_to_plot = np.delete(data_to_plot, slice(index_low, index_high))
+            samples_removed = index_high - index_low
+            affecting_ml_epoch = False
+            for idx_ml_epoch, ml_epoch in enumerate(ml_epochs):
+                if affecting_ml_epoch:
+                    ml_epochs[idx_ml_epoch] -= samples_removed
+                    continue
+                if index_low < ml_epoch and index_high < ml_epoch:
+                    ml_epochs[idx_ml_epoch] -= samples_removed
+                    affecting_ml_epoch = True
+                elif index_low < ml_epoch and index_high > ml_epoch:
+                    ml_epochs[idx_ml_epoch] -= (samples_removed + index_high - ml_epoch)
+                    affecting_ml_epoch = True
     for i in range(len(electrodes_to_plot)):
+        data_index = np.index_exp[:, i]
+        data = raw_data[data_index]
+        for epoch in artifact_epochs:
+            index_low = math.floor(epoch[0] * SAMPLING_SPEED)
+            index_high = math.ceil(epoch[1] * SAMPLING_SPEED)
+            data = np.delete(data, slice(index_low, index_high))
+            max_sample = len(data[:])
         for current_window_low in range(0, max_sample, window):
-            index_ch = np.index_exp[current_window_low:current_window_low + window, i]
+            index_ch = np.index_exp[current_window_low:current_window_low + window]
             # Need to add logic here... maybe padd with zeros
             # if (np.max(raw_data[index_ch]) - np.min(raw_data[index_ch])) > 110 or \
             #         (np.max(raw_data[index_ch]) - np.min(raw_data[index_ch])) > 110:
             #     continue
             if method == 'hilbert':
-                # Try for power too
-                analytic_signal = hilbert(raw_data[index_ch])
+                analytic_signal = hilbert(data[index_ch])
                 instantaneous_phase = np.unwrap(np.angle(analytic_signal))
                 instantaneous_phase_global[i] = np.append(instantaneous_phase_global[i], instantaneous_phase.copy())
     plv_global = defaultdict(list)
@@ -174,15 +200,21 @@ def phase_locking_value(raw_data, electrodes_to_plot, method='hilbert', save_ds=
             key = f'{ch_names[i]}-{ch_names[j]}'
             plv_global[key] = plv
     if save_ds:
-        ds_filename = f'PLV_dataset/{filename}'
+        ds_filename = f'PLV/dataset/{filename}'
         np.save(ds_filename, plv_global)
-    return plv_global
+        epoch_filename = f'PLV/epoch/{filename}'
+        np.save(epoch_filename, ml_epochs)
+    return plv_global, ml_epochs
 
 
-def small_world(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename='',
-                plv=None):
-    if plv is None:
-        plv = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True, filename=filename)
+def small_world(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, filename=''):
+    try:
+        plv = np.load(f'PLV/dataset/{filename}.npy', allow_pickle=True).item()
+        ml_epochs = np.load(f'PLV/epoch/{filename}.npy', allow_pickle=True).item()
+    except OSError:
+        plv, ml_epochs = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True,
+                                             filename=filename)
+
     sigma_values = []
     omega_values = []
     electrode_graph = nx.Graph()
@@ -221,10 +253,14 @@ def small_world(raw_data, electrodes_to_plot, method='hilbert', save_fig=False, 
 
 
 def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='clustering', save_fig=False, filename='',
-                      plv=None, inter_hemisphere=False, ratio=False, entrain_time=0, region_averaged=False):
-    if plv is None:
-        plv = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True, filename=filename,
-                                  ratio=ratio)
+                      inter_hemisphere=False, ratio=False, entrain_time=0, region_averaged=False,
+                      artifact_epochs=None, band='beta'):
+    try:
+        plv = np.load(f'PLV/dataset/{filename}.npy', allow_pickle=True).item()
+        ml_epochs = np.load(f'PLV/epoch/{filename}.npy', allow_pickle=True)
+    except OSError:
+        plv, ml_epochs = phase_locking_value(raw_data, electrodes_to_plot, method=method, save_ds=True,
+                                             filename=filename, artifact_epochs=artifact_epochs)
     number_dp = len(plv[f'{ch_names[0]}-{ch_names[1]}'])
     time_values = range(number_dp)
     # 5 s trials
@@ -323,6 +359,44 @@ def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='cl
             ax[active_row, active_column].annotate(label_start, (ma_time_global[0], ma_avg[0]),
                                                    textcoords="offset points", xytext=(0, 10),
                                                    ha='left')
+
+            csv_write_region = f'{filename.split("_")[0]}, {filename.split("_")[1]}, {band}'
+            if key == 'T' or key == 'TP' or key == 'FT':
+                csv_write_region += f', {key}'
+                csv_write_region += f', {ma_avg[0]}'
+                csv_write_region += f', {ma_avg[-1]}'
+                csv_write_region += f', {ma_avg[y_max_index]}'
+                csv_write_region += f', {ma_avg[y_min_index]}'
+
+                count = 0
+                for val in ma_avg:
+                    if val > ma_avg[0]:
+                        count += 1
+                data_to_save = f'{filename.split("_")[0]}, {filename.split("_")[1]}, {band}, {key}, '
+                data_to_save += str(count / len(ma_avg) * 100)
+                data_to_save += '\n'
+
+                text_file = open(percentage_coherence_analysis_file, "a")
+                text_file.write(data_to_save)
+                text_file.close()
+
+                for epoch in ml_epochs:
+                    # Fix
+                    epoch_in_s = epoch / (512 * 60)
+                    index_boolean = [t >= epoch_in_s for t in ma_time_global]
+                    index = np.argmax(index_boolean)
+                    epoch_value = ma_avg[index]
+                    csv_write_region += f', {epoch_value}'
+                    label_epoch = "{:.4f}".format(epoch_value)
+                    if save_fig:
+                        ax[active_row, active_column].annotate(label_epoch, (ma_time_global[index], epoch_value),
+                                                               textcoords="offset points", xytext=(-15, -10),
+                                                               ha='left')
+                        ax[active_row, active_column].plot(ma_time_global[index], epoch_value, 'r.')
+                csv_write_region += "\n"
+                text_file = open(coherence_analysis_file, "a")
+                text_file.write(csv_write_region)
+                text_file.close()
             ax[active_row, active_column].set_title(key)
             ax[active_row, active_column].grid()
             active_column += 1

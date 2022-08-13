@@ -44,6 +44,7 @@ def figure_handling(fig, filename='', save_fig=False, ):
     else:
         plt.savefig(filename)
         plt.close(fig)
+        del fig
 
 
 def get_hemisphere(ch_names):
