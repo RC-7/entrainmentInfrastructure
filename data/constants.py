@@ -17,11 +17,11 @@ ch_hemisphere = get_hemisphere(ch_names)
 
 power_analysis_file = 'power_summary.csv'
 
-percentage_power_analysis_file = 'meta_analysis/percentageAbovePower'
+percentage_power_analysis_file = 'meta_analysis/power/percentageAbovePower'
 
 coherence_analysis_file = 'coherence_summary.csv'
 
-percentage_coherence_analysis_file = 'meta_analysis/percentageAboveCoherence'
+percentage_coherence_analysis_file = 'meta_analysis/cluster/percentageAboveCoherence'
 
 participants = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
                 'H', 'Zo', 'S', 'A', 'B']

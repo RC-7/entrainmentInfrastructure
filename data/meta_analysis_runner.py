@@ -1,5 +1,6 @@
 import pandas as pd
-from constants import power_analysis_file, coherence_analysis_file
+from constants import power_analysis_file, coherence_analysis_file, percentage_coherence_analysis_file,\
+    percentage_power_analysis_file, test_participants
 from clustering_analysis import k_means_analysis
 
 
@@ -211,7 +212,63 @@ def analyse_results(modality='power'):
         meta_increasing_band_sorted.to_csv(f"meta_analysis/{band}_metaIncreasing_{modality}", index=False)
 
 
-analyse_results(modality='power')
+def analyse_percentage_change(modality):
+    if modality == 'power':
+        filename = percentage_power_analysis_file
+    else:
+        filename = percentage_coherence_analysis_file
+    percentage_change_df = pd.read_csv(filename, skipinitialspace=True)
+    percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
+    if 'group' not in percentage_change_df.keys():
+        percentage_change_df['group'] = percentage_change_df['Participant'].apply(lambda x: 'test' if x in test_participants
+        else 'control')
+
+    regions = ['T', 'TP', 'FT', 'all']
+    datasets = ['ml', 'beta', 'pink']
+    bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
+    averages = pd.DataFrame(columns=['dataset', 'band', 'group', 'region', 'average'])
+    participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
+                               'H', 'Zo', 'B', 'S', 'A']
+
+    for region in regions:
+        for band in bands:
+            for dataset in datasets:
+                if dataset == 'pink':
+                    groups = ['test', 'control', 'all']
+                else:
+                    groups = ['test']
+                for group in groups:
+                    if group == 'all':
+                        percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                                       (percentage_change_df.dataset == dataset) &
+                                                                       (percentage_change_df.Participant.isin(
+                                                                           participants_to_include))]
+                    else:
+                        percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                                       (percentage_change_df.dataset == dataset) &
+                                                                       (percentage_change_df.Participant.isin(
+                                                                           participants_to_include)) &
+                                                                       (percentage_change_df.group == group)]
+
+                    if region == 'all':
+                        percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region == 'average')]
+                        # percentage_region_scoped = percentage_above_scoped
+                    else:
+                        percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region == region)]
+                    result = {'dataset': dataset, 'band': band, 'group': group, 'region': region,
+                              'average': percentage_region_scoped['%above'].mean()}
+                    averages = averages.append(result, ignore_index=True)
+
+    percentage_change_df.to_csv(filename, index=False)
+    for band in bands:
+        averages_band_scoped = averages[averages.band == band]
+        averages_band_sorted = averages_band_scoped.sort_values(by=['dataset', 'group'])
+        averages_band_sorted.to_csv(f"meta_analysis/{band}_percentage_increase_{modality}", index=False)
+
+
+# analyse_results(modality='clustering')
+
+analyse_percentage_change(modality='coherence')
 # record_action_order()
 
 # k_means_analysis()
