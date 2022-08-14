@@ -22,3 +22,8 @@ percentage_power_analysis_file = 'meta_analysis/percentageAbovePower'
 coherence_analysis_file = 'coherence_summary.csv'
 
 percentage_coherence_analysis_file = 'meta_analysis/percentageAboveCoherence'
+
+participants = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
+                'H', 'Zo', 'S', 'A', 'B']
+test_participants = ['V', 'A', 'S', 'D', 'J', 'T']
+control_participants = ['B', 'El', 'Zo', 'H', 'P', 'St']

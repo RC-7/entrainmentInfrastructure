@@ -1,6 +1,6 @@
-
 import pandas as pd
 from constants import power_analysis_file, coherence_analysis_file
+from clustering_analysis import k_means_analysis
 
 
 def record_action_order():
@@ -19,12 +19,12 @@ def record_action_order():
         previous_action = '24'
         for j in range(0, len(action_times) - 1):
             action_taken = actions.loc[j]['action']
-            actions_dict[action_times[j+1]] = action_taken
+            actions_dict[action_times[j + 1]] = action_taken
             index_state = f'{actions.loc[j]["state"]}_{previous_action}'
             optimal_action = str(model.loc[index_state].idxmax(axis=0))
             previous_action = action_taken
             if str(action_taken) == optimal_action:
-                optimal_actions_dict[action_times[j+1]] = 1
+                optimal_actions_dict[action_times[j + 1]] = 1
             else:
                 optimal_actions_dict[action_times[j + 1]] = 0
         actions_taken = actions_taken.append(actions_dict, ignore_index=True)
@@ -50,7 +50,6 @@ def analyse_results(modality='power'):
                     'H', 'Zo', 'S', 'A', 'B']
     test = ['V', 'A', 'S', 'D', 'J', 'T']
     control = ['B', 'El', 'Zo', 'H', 'P', 'St']
-
 
     power_df['group'] = power_df['participantID'].apply(lambda x: 'test' if x in test else 'control')
 
@@ -82,12 +81,6 @@ def analyse_results(modality='power'):
                                                   'increased_six_nine', 'increased_nine_twelve',
                                                   'increased_twelve_fifteen'])
 
-    # power_change_columns = power_df[['start_three', 'start_six', 'start_nine', 'start_twelve', 'three_six',
-    #                                  'six_nine', 'nine_twelve', 'twelve_fifteen', 'increased_overall',
-    #                                  'increased_start_three', 'increased_start_six', 'increased_start_nine',
-    #                                  'increased_start_twelve', 'increased_three_six', 'increased_six_nine',
-    #                                  'increased_nine_twelve', 'increased_twelve_fifteen']]
-
     increased_count = ['increased_overall', 'increased_start_three', 'increased_start_six', 'increased_start_nine',
                        'increased_start_twelve', 'increased_three_six', 'increased_six_nine', 'increased_nine_twelve',
                        'increased_twelve_fifteen']
@@ -115,7 +108,30 @@ def analyse_results(modality='power'):
 
                 increasing_electrodes = increasing_electrodes.append(values, ignore_index=True)
     increasing_electrodes.sort_values(by='dataset')
-    # print(increasing_electrodes)
+
+    datasets = ['ml', 'beta', 'pink']
+    meta_increasing_columns = ['group', 'dataset', 'band', 'mean', 'metric', '0_count', '1_count', '2_count', '3_count']
+    meta_increasing = pd.DataFrame(columns=meta_increasing_columns)
+    for band in bands:
+        for dataset in datasets:
+            if dataset == 'pink':
+                groups = ['test', 'control', 'all']
+            else:
+                groups = ['test']
+
+            for group in groups:
+                if group == 'all':
+                    ds_meta_increase = increasing_electrodes[(increasing_electrodes.dataset == dataset) &
+                                                             (increasing_electrodes.band == band)]
+                else:
+                    ds_meta_increase = increasing_electrodes[(increasing_electrodes.group == group) &
+                                                             (increasing_electrodes.dataset == dataset) &
+                                                             (increasing_electrodes.band == band)]
+                results_dict = {'group': group, 'dataset': dataset, 'metric': 'Overall', 'band': band,
+                                'mean': ds_meta_increase['increased_overall'].mean()}
+                for i in range(4):
+                    results_dict[f'{i}_count'] = len(ds_meta_increase[ds_meta_increase['increased_overall'] == i])
+                meta_increasing = meta_increasing.append(results_dict, ignore_index=True)
 
     statistics_across = pd.DataFrame(columns=['group', 'dataset', 'band', 'mean_start', 'mean_end', 'std_start',
                                               'std_end', 'mean_abs_diff', 'std_abs_diff', 'region'])
@@ -173,15 +189,23 @@ def analyse_results(modality='power'):
         statistics_across_band_filtered = statistics_across_band_filtered.sort_values(by=['dataset', 'group'])
         statistics_across_band_filtered.to_csv(f"meta_analysis/{band}_stats_{modality}", index=False)
 
-        power_change_columns = power_df[['participantID', 'dataset_name', 'band', 'group', 'start_three', 'start_six', 'start_nine', 'start_twelve', 'three_six',
-                                         'six_nine', 'nine_twelve', 'twelve_fifteen', 'increased_overall',
-                                         'increased_start_three', 'increased_start_six', 'increased_start_nine',
-                                         'increased_start_twelve', 'increased_three_six', 'increased_six_nine',
-                                         'increased_nine_twelve', 'increased_twelve_fifteen']]
+        power_change_columns = power_df[
+            ['participantID', 'dataset_name', 'band', 'group', 'start_three', 'start_six', 'start_nine', 'start_twelve',
+             'three_six',
+             'six_nine', 'nine_twelve', 'twelve_fifteen', 'increased_overall',
+             'increased_start_three', 'increased_start_six', 'increased_start_nine',
+             'increased_start_twelve', 'increased_three_six', 'increased_six_nine',
+             'increased_nine_twelve', 'increased_twelve_fifteen']]
         power_change_filtered = power_change_columns[power_change_columns.band == band]
         power_change_sorted = power_change_filtered.sort_values(by=['dataset_name', 'group'])
         power_change_sorted.to_csv(f"meta_analysis/{band}_delta_{modality}", index=False)
 
+        meta_increasing_band = meta_increasing[meta_increasing.band == band]
+        meta_increasing_band_sorted = meta_increasing_band.sort_values(by=['dataset', 'group'])
+        meta_increasing_band_sorted.to_csv(f"meta_analysis/{band}_metaIncreasing_{modality}", index=False)
 
-analyse_results(modality='clustering')
+
+analyse_results(modality='power')
 # record_action_order()
+
+# k_means_analysis()
