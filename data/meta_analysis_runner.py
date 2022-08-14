@@ -110,7 +110,8 @@ def analyse_results(modality='power'):
     increasing_electrodes.sort_values(by='dataset')
 
     datasets = ['ml', 'beta', 'pink']
-    meta_increasing_columns = ['group', 'dataset', 'band', 'mean', 'metric', '0_count', '1_count', '2_count', '3_count']
+    meta_increasing_columns = ['group', 'dataset', 'band', 'mean', 'metric', '0_count', '1_count', '2_count', '3_count',
+                               'total increasing']
     meta_increasing = pd.DataFrame(columns=meta_increasing_columns)
     for band in bands:
         for dataset in datasets:
@@ -129,8 +130,13 @@ def analyse_results(modality='power'):
                                                              (increasing_electrodes.band == band)]
                 results_dict = {'group': group, 'dataset': dataset, 'metric': 'Overall', 'band': band,
                                 'mean': ds_meta_increase['increased_overall'].mean()}
+                total_increasing = 0
                 for i in range(4):
-                    results_dict[f'{i}_count'] = len(ds_meta_increase[ds_meta_increase['increased_overall'] == i])
+                    increasing = len(ds_meta_increase[ds_meta_increase['increased_overall'] == i])
+                    results_dict[f'{i}_count'] = increasing
+                    if i > 0:
+                        total_increasing += increasing
+                results_dict['total increasing'] = total_increasing
                 meta_increasing = meta_increasing.append(results_dict, ignore_index=True)
 
     statistics_across = pd.DataFrame(columns=['group', 'dataset', 'band', 'mean_start', 'mean_end', 'std_start',
