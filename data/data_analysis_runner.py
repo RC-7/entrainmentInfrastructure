@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from power_analysis import stft_test, stft_by_region, analyse_power_values
+from power_analysis import stft_test, stft_by_region, analyse_power_values, analyse_percentage_power
 from mne_wrapper import generate_mne_raw_with_info
 from generic_analysis import create_x_values
 import os
@@ -76,8 +76,8 @@ def main():
             group = 'control'
             ds_names = ['pink_audio']
         file_type = 'hdfs'
-        # bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
-        bands = ['beta_entrain', 'beta_entrain_low']
+        bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
+        # bands = ['beta_entrain', 'beta_entrain_low']
 
         for ds_name in ds_names:
             if ds_name == 'beta_audio':
@@ -134,6 +134,7 @@ def main():
                 # fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power_no_avg'
                 # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn, plot_averaged=True,
                 #           band=band)
+    analyse_percentage_power()
 
 
 if __name__ == '__main__':

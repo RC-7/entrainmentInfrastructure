@@ -665,9 +665,55 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
         del fig
 
 
-def analyse_power_values(filename, band, group, dataset):
+def analyse_percentage_power():
+    percentage_change_df = pd.read_csv(percentage_power_analysis_file, skipinitialspace=True)
+    percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
+    regions = ['T', 'TP', 'FT', 'all']
+    datasets = ['ml', 'beta', 'pink']
+    bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
+    averages = pd.DataFrame(columns=['dataset', 'band', 'group', 'region', 'average'])
+    participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
+                               'H', 'Zo', 'B', 'S', 'A']
 
+    for region in regions:
+        for band in bands:
+            for dataset in datasets:
+                if dataset == 'pink':
+                    groups = ['test', 'control', 'all']
+                else:
+                    groups = ['test']
+                for group in groups:
+                    if group == 'all':
+                        percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                                       (percentage_change_df.dataset == dataset) &
+                                                                       (percentage_change_df.Participant.isin(
+                                                                           participants_to_include))]
+                    else:
+                        percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                                       (percentage_change_df.dataset == dataset)&
+                                                                       (percentage_change_df.Participant.isin(
+                                                                           participants_to_include)) &
+                                                                       (percentage_change_df.group == group)]
+
+                    if region == 'all':
+                        percentage_region_scoped = percentage_above_scoped
+                    else:
+                        percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region == region)]
+                    print(percentage_region_scoped['%above'].mean())
+                    result = {'dataset': dataset, 'band': band, 'group': group, 'region': region,
+                              'average': percentage_region_scoped['%above'].mean()}
+                    averages = averages.append(result, ignore_index=True)
+
+    percentage_change_df.to_csv(percentage_power_analysis_file, index=False)
+    for band in bands:
+        averages_band_scoped = averages[averages.band == band]
+        averages_band_sorted = averages_band_scoped.sort_values(by=['dataset', 'group'])
+        averages_band_sorted.to_csv(f"meta_analysis/{band}_percentage_increase_power", index=False)
+
+
+def analyse_power_values(filename, band, group, dataset):
     regions = ['T', 'TP', 'FT']
+    values = []
     for region in regions:
         data_to_save = f'{filename.split("_")[0]}, {dataset.split("_")[0]}, {band}, {group}, {region}, '
         np_ds_filename_data = f'stft_region_averaged/ft_values/{filename}_{region}.npy'
@@ -676,13 +722,19 @@ def analyse_power_values(filename, band, group, dataset):
         for val in power_values:
             if val > power_values[0]:
                 count += 1
-        data_to_save += str(count/len(power_values)*100)
-        data_to_save +='\n'
+        percentage_above = count / len(power_values) * 100
+        data_to_save += str(percentage_above)
+        values.append(percentage_above)
+        data_to_save += '\n'
 
         text_file = open(percentage_power_analysis_file, "a")
         text_file.write(data_to_save)
         text_file.close()
-
+    data_to_save = f'{filename.split("_")[0]}, {dataset.split("_")[0]}, {band}, {group}, average,' \
+                   f'{str(np.mean(values))}\n'
+    text_file = open(percentage_power_analysis_file, "a")
+    text_file.write(data_to_save)
+    text_file.close()
 
 
 def alpha_band_stft_test(eeg_data, electrodes_to_plot, np_slice_indexes, save=False, filename=None):

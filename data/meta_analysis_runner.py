@@ -128,16 +128,17 @@ def analyse_results(modality='power'):
                     ds_meta_increase = increasing_electrodes[(increasing_electrodes.group == group) &
                                                              (increasing_electrodes.dataset == dataset) &
                                                              (increasing_electrodes.band == band)]
-                results_dict = {'group': group, 'dataset': dataset, 'metric': 'Overall', 'band': band,
-                                'mean': ds_meta_increase['increased_overall'].mean()}
-                total_increasing = 0
-                for i in range(4):
-                    increasing = len(ds_meta_increase[ds_meta_increase['increased_overall'] == i])
-                    results_dict[f'{i}_count'] = increasing
-                    if i > 0:
-                        total_increasing += increasing
-                results_dict['total increasing'] = total_increasing
-                meta_increasing = meta_increasing.append(results_dict, ignore_index=True)
+                for metric in increased_count:
+                    results_dict = {'group': group, 'dataset': dataset, 'metric': metric, 'band': band,
+                                    'mean': ds_meta_increase[metric].mean()}
+                    total_increasing = 0
+                    for i in range(4):
+                        increasing = len(ds_meta_increase[ds_meta_increase[metric] == i])
+                        results_dict[f'{i}_count'] = increasing
+                        if i > 0:
+                            total_increasing += increasing
+                    results_dict['total increasing'] = total_increasing
+                    meta_increasing = meta_increasing.append(results_dict, ignore_index=True)
 
     statistics_across = pd.DataFrame(columns=['group', 'dataset', 'band', 'mean_start', 'mean_end', 'std_start',
                                               'std_end', 'mean_abs_diff', 'std_abs_diff', 'region'])
@@ -196,9 +197,8 @@ def analyse_results(modality='power'):
         statistics_across_band_filtered.to_csv(f"meta_analysis/{band}_stats_{modality}", index=False)
 
         power_change_columns = power_df[
-            ['participantID', 'dataset_name', 'band', 'group', 'start_three', 'start_six', 'start_nine', 'start_twelve',
-             'three_six',
-             'six_nine', 'nine_twelve', 'twelve_fifteen', 'increased_overall',
+            ['participantID', 'dataset_name', 'region', 'band', 'group', 'start_three', 'start_six', 'start_nine',
+             'start_twelve', 'three_six', 'six_nine', 'nine_twelve', 'twelve_fifteen', 'increased_overall',
              'increased_start_three', 'increased_start_six', 'increased_start_nine',
              'increased_start_twelve', 'increased_three_six', 'increased_six_nine',
              'increased_nine_twelve', 'increased_twelve_fifteen']]
