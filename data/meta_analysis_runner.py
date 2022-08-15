@@ -1,6 +1,8 @@
 import pandas as pd
 from constants import power_analysis_file, coherence_analysis_file, percentage_coherence_analysis_file,\
     percentage_power_analysis_file, test_participants
+
+import numpy as np
 from clustering_analysis import k_means_analysis
 
 
@@ -223,10 +225,11 @@ def analyse_percentage_change(modality):
         percentage_change_df['group'] = percentage_change_df['Participant'].apply(lambda x: 'test' if x in test_participants
         else 'control')
 
-    regions = ['T', 'TP', 'FT', 'all']
+    regions = ['T', 'TP', 'FT', 'all', 'T_and_TP']
     datasets = ['ml', 'beta', 'pink']
     bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
-    averages = pd.DataFrame(columns=['dataset', 'band', 'group', 'region', 'average'])
+    averages = pd.DataFrame(columns=['dataset', 'band', 'group', 'region', 'average', 'Q1', 'Q3', 'median', 'max', 'IQR'
+                                     , 'outlier_upper_bound', 'outlier_lower_bound'])
     participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
                                'H', 'Zo', 'B', 'S', 'A']
 
@@ -253,10 +256,23 @@ def analyse_percentage_change(modality):
                     if region == 'all':
                         percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region == 'average')]
                         # percentage_region_scoped = percentage_above_scoped
+                    elif region == 'T_and_TP':
+                        percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region.isin(
+                            ['T', 'TP']))]
                     else:
                         percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region == region)]
+                    q1 = np.percentile(percentage_region_scoped['%above'], 25)
+                    q3 = np.percentile(percentage_region_scoped['%above'], 75)
+                    iqr = np.subtract(*np.percentile(percentage_region_scoped['%above'], [75, 25]))
                     result = {'dataset': dataset, 'band': band, 'group': group, 'region': region,
-                              'average': percentage_region_scoped['%above'].mean()}
+                              'average': percentage_region_scoped['%above'].mean(),
+                              'max': percentage_region_scoped['%above'].max(),
+                              'Q1': q1,
+                              'Q3': q3,
+                              'median': np.percentile(percentage_region_scoped['%above'], 50),
+                              'IQR': iqr,
+                              'outlier_upper_bound': q3+1.5*iqr,
+                              'outlier_lower_bound': q1-1.5*iqr,}
                     averages = averages.append(result, ignore_index=True)
 
     percentage_change_df.to_csv(filename, index=False)
@@ -268,7 +284,7 @@ def analyse_percentage_change(modality):
 
 # analyse_results(modality='clustering')
 
-analyse_percentage_change(modality='coherence')
+analyse_percentage_change(modality='clustering')
 # record_action_order()
 
 # k_means_analysis()
