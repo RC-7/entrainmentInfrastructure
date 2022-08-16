@@ -17,7 +17,7 @@ ch_hemisphere = get_hemisphere(ch_names)
 
 power_analysis_file = 'power_summary.csv'
 
-percentage_power_analysis_file = 'meta_analysis/power/percentageAbovePower'
+percentage_power_analysis_file = 'meta_analysis/power/percentageAbovePowerFinal.csv'
 
 coherence_analysis_file = 'coherence_summary.csv'
 

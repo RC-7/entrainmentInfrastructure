@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from power_analysis import stft_test, stft_by_region, analyse_power_values
+from power_analysis import stft_test, stft_by_region, analyse_power_values, order_percentrage_power
 from mne_wrapper import generate_mne_raw_with_info
 from generic_analysis import create_x_values
 import os
@@ -42,7 +42,7 @@ def main():
     # text_file.close()
 
     text_file = open(percentage_power_analysis_file, "w")
-    power_summary_columns = "Participant, dataset, band, group, region, %above\n"
+    power_summary_columns = "Participant, dataset, band, group, region, 3, 6, 9, 12, 15, average\n"
     text_file.write(power_summary_columns)
     text_file.close()
 
@@ -52,7 +52,8 @@ def main():
     # text_file.close()
 
     participants = ['Full_run_V', 'Full_run_St', 'Full_run_J', 'Full_run_D', 'Full_run_El', 'Full_run_P',
-                    'Full_run_H', 'Full_run_Zo', 'Full_run_S', 'Full_run_A', 'Full_run_Jasp', 'Full_run_B', 'Full_run_T']
+                    'Full_run_H', 'Full_run_Zo', 'Full_run_S', 'Full_run_A', 'Full_run_Jasp', 'Full_run_B',
+                    'Full_run_T']
     test = ['Full_run_V', 'Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D', 'Full_run_J', 'Full_run_T']
     threshold = 90
     group = ''
@@ -63,7 +64,7 @@ def main():
         max_crop = None
         # TODO Scope to datasets
         if p == 'Full_run_St' or p == 'Full_run_D':
-            max_crop = 60 * 13
+            max_crop = 60 * 14
         if p in test:
             group = 'test'
             if p == 'Full_run_V':
@@ -89,15 +90,18 @@ def main():
             if ds_name == 'pink_audio' and p not in test:
                 min_crop = 40
             if ds_name == 'pink_audio' and p in test:
+                if p == 'Full_run_D':
+                    min_crop = 40
+            else:
                 min_crop = 15
             filename = f'custom_suite/{p}/{ds_name}.h5'
             epochs = None
+            electrodes_to_plot = [x for x in range(62)]
+            index_dict = {}
+            for i in electrodes_to_plot:
+                index_dict[i] = np.index_exp[:, i]
             if run_epoch_artifacts:
                 [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='')
-                electrodes_to_plot = [x for x in range(62)]
-                index_dict = {}
-                for i in electrodes_to_plot:
-                    index_dict[i] = np.index_exp[:, i]
                 cropped_data = crop_data(raw, min_crop, max_crop)
                 epochs = epoch_artifacts(cropped_data, ch_names, threshold)
 
@@ -126,7 +130,7 @@ def main():
                 # #############  Power  ##############
                 # ####################################
                 fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power'
-                print(fn)
+                # print(fn)
                 # TODO account for cropping time
                 # stft_by_region(cropped_data, electrodes_to_plot, index_dict, save_plot=save_plot, filename=fn,
                 #                artifact_epochs=epochs, band=band, save_values=True)
@@ -134,6 +138,7 @@ def main():
                 # fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power_no_avg'
                 # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn, plot_averaged=True,
                 #           band=band)
+    # order_percentrage_power()
 
 
 if __name__ == '__main__':

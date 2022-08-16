@@ -665,29 +665,67 @@ def stft_by_region(eeg_data, electrodes_to_plot, np_slice_indexes, band='beta', 
         del fig
 
 
+def order_percentrage_power():
+    percentage_change_df = pd.read_csv(percentage_power_analysis_file, skipinitialspace=True)
+    percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
+    percentage_change_df.to_csv(percentage_power_analysis_file, index=False)
 
 
 def analyse_power_values(filename, band, group, dataset):
     regions = ['T', 'TP', 'FT']
     values = []
+    averages = defaultdict(list)
     for region in regions:
-        data_to_save = f'{filename.split("_")[0]}, {dataset.split("_")[0]}, {band}, {group}, {region}, '
+        data_to_save = f'{filename.split("_")[0]}, {dataset.split("_")[0]}, {band}, {group}, {region}'
         np_ds_filename_data = f'stft_region_averaged/ft_values/{filename}_{region}.npy'
+        np_ds_filename_epoch = f'stft_region_averaged/epochs/{filename}_{region}.npy'
         power_values = np.load(np_ds_filename_data, allow_pickle=True)[1]
-        count = 0
-        for val in power_values:
+        time = np.load(np_ds_filename_data, allow_pickle=True)[0]
+        epochs = np.load(np_ds_filename_epoch, allow_pickle=True)
+        indices = []
+        for epoch in epochs:
+            epoch_in_s = epoch / (512 * 60)
+            index_boolean = [t >= epoch_in_s for t in time]
+            if np.sum(index_boolean) == 0:
+                index = len(power_values)
+            else:
+                index = np.argmax(index_boolean)
+            indices.append(index)
+        # print(len(power_values))
+        count = []
+        epoch_index = 0
+        prev_epoch = 0
+        percentages = []
+        for idx_p, val in enumerate(power_values):
             if val > power_values[0]:
-                count += 1
-        percentage_above = count / len(power_values) * 100
-        data_to_save += str(percentage_above)
-        values.append(percentage_above)
-        data_to_save += '\n'
+                count.append(1)
+            else:
+                count.append(0)
+            if epoch_index < len(indices):
+                if idx_p == indices[epoch_index]:
+                    if len(count) > 0:
+                        percentages.append((np.sum(count) / len(count)) * 100)
+                    else:
+                        percentages.append(0)
+                    count = []
+                    epoch_index += 1
+        if len(count) > 0:
+            percentages.append((np.sum(count) / len(count)) * 100)
+        else:
+            percentages.append(percentages[-1])
+        percentages.append(np.mean(percentages))
 
+        for id_p, percentage in enumerate(percentages):
+            data_to_save += f', {percentage}'
+            averages[id_p].append(percentage)
+        data_to_save += '\n'
         text_file = open(percentage_power_analysis_file, "a")
         text_file.write(data_to_save)
         text_file.close()
-    data_to_save = f'{filename.split("_")[0]}, {dataset.split("_")[0]}, {band}, {group}, average,' \
-                   f'{str(np.mean(values))}\n'
+    data_to_save = f'{filename.split("_")[0]}, {dataset.split("_")[0]}, {band}, {group}, average'
+    for key in averages:
+        data_to_save += f', {np.mean(averages[key])}'
+    data_to_save +='\n'
     text_file = open(percentage_power_analysis_file, "a")
     text_file.write(data_to_save)
     text_file.close()
