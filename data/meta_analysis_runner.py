@@ -1,9 +1,10 @@
 import pandas as pd
-from constants import power_analysis_file, coherence_analysis_file, percentage_coherence_analysis_file,\
+from constants import power_analysis_file, coherence_analysis_file, percentage_coherence_analysis_file, \
     percentage_power_analysis_file, test_participants
 
 import numpy as np
 from clustering_analysis import k_means_analysis
+from scipy.stats import ttest_ind, ttest_rel, mannwhitneyu, ttest_ind_from_stats
 
 
 def record_action_order():
@@ -78,9 +79,9 @@ def analyse_results(modality='power'):
     power_df['increased_six_nine'] = power_df['six_nine'].apply(lambda x: 1 if x > 0 else 0)
     power_df['increased_nine_twelve'] = power_df['nine_twelve'].apply(lambda x: 1 if x > 0 else 0)
     power_df['increased_twelve_fifteen'] = power_df['twelve_fifteen'].apply(lambda x: 1 if x > 0 else 0)
-    increasing_electrodes = pd.DataFrame(columns=['participantID', 'dataset', 'band', 'increased_overall',
+    increasing_electrodes = pd.DataFrame(columns=['participantID', 'dataset', 'band', 'group', 'increased_overall',
                                                   'increased_start_three', 'increased_start_six', 'increased_start_nine'
-                                                  , 'increased_start_twelve', 'increased_three_six',
+        , 'increased_start_twelve', 'increased_three_six',
                                                   'increased_six_nine', 'increased_nine_twelve',
                                                   'increased_twelve_fifteen'])
 
@@ -201,7 +202,7 @@ def analyse_results(modality='power'):
 
         power_change_columns = power_df[
             ['participantID', 'dataset_name', 'region', 'band', 'group', 'start_three', 'start_six', 'start_nine',
-             'start_twelve', 'three_six', 'six_nine', 'nine_twelve', 'twelve_fifteen', 'increased_overall',
+             'start_twelve', 'three_six', 'six_nine', 'nine_twelve', 'twelve_fifteen', 'overall', 'increased_overall',
              'increased_start_three', 'increased_start_six', 'increased_start_nine',
              'increased_start_twelve', 'increased_three_six', 'increased_six_nine',
              'increased_nine_twelve', 'increased_twelve_fifteen']]
@@ -222,14 +223,15 @@ def analyse_percentage_change(modality):
     percentage_change_df = pd.read_csv(filename, skipinitialspace=True)
     percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
     if 'group' not in percentage_change_df.keys():
-        percentage_change_df['group'] = percentage_change_df['Participant'].apply(lambda x: 'test' if x in test_participants
-        else 'control')
+        percentage_change_df['group'] = percentage_change_df['Participant'].apply(
+            lambda x: 'test' if x in test_participants
+            else 'control')
 
     regions = ['T', 'TP', 'FT', 'all', 'T_and_TP']
     datasets = ['ml', 'beta', 'pink']
     bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
     averages = pd.DataFrame(columns=['dataset', 'band', 'group', 'region', 'average', 'Q1', 'Q3', 'median', 'max', 'IQR'
-                                     , 'outlier_upper_bound', 'outlier_lower_bound'])
+        , 'outlier_upper_bound', 'outlier_lower_bound'])
     participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
                                'H', 'Zo', 'B', 'S', 'A']
 
@@ -254,25 +256,26 @@ def analyse_percentage_change(modality):
                                                                        (percentage_change_df.group == group)]
 
                     if region == 'all':
-                        percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region == 'average')]
+                        percentage_region_scoped = percentage_above_scoped[
+                            (percentage_above_scoped.region == 'average')]
                         # percentage_region_scoped = percentage_above_scoped
                     elif region == 'T_and_TP':
                         percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region.isin(
                             ['T', 'TP']))]
                     else:
                         percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region == region)]
-                    q1 = np.percentile(percentage_region_scoped['%above'], 25)
-                    q3 = np.percentile(percentage_region_scoped['%above'], 75)
-                    iqr = np.subtract(*np.percentile(percentage_region_scoped['%above'], [75, 25]))
+                    q1 = np.percentile(percentage_region_scoped['average'], 25)
+                    q3 = np.percentile(percentage_region_scoped['average'], 75)
+                    iqr = np.subtract(*np.percentile(percentage_region_scoped['average'], [75, 25]))
                     result = {'dataset': dataset, 'band': band, 'group': group, 'region': region,
-                              'average': percentage_region_scoped['%above'].mean(),
-                              'max': percentage_region_scoped['%above'].max(),
+                              'average': percentage_region_scoped['average'].mean(),
+                              'max': percentage_region_scoped['average'].max(),
                               'Q1': q1,
                               'Q3': q3,
-                              'median': np.percentile(percentage_region_scoped['%above'], 50),
+                              'median': np.percentile(percentage_region_scoped['average'], 50),
                               'IQR': iqr,
-                              'outlier_upper_bound': q3+1.5*iqr,
-                              'outlier_lower_bound': q1-1.5*iqr,}
+                              'outlier_upper_bound': q3 + 1.5 * iqr,
+                              'outlier_lower_bound': q1 - 1.5 * iqr}
                     averages = averages.append(result, ignore_index=True)
 
     percentage_change_df.to_csv(filename, index=False)
@@ -282,9 +285,249 @@ def analyse_percentage_change(modality):
         averages_band_sorted.to_csv(f"meta_analysis/{band}_percentage_increase_{modality}", index=False)
 
 
-# analyse_results(modality='clustering')
+def t_test(modality):
+    if modality == 'power':
+        # filename = power_analysis_file
+        filename = percentage_power_analysis_file
+    else:
+        filename = percentage_coherence_analysis_file
 
-analyse_percentage_change(modality='clustering')
+    percentage_change_df = pd.read_csv(filename, skipinitialspace=True)
+    percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
+    if 'group' not in percentage_change_df.keys():
+        percentage_change_df['group'] = percentage_change_df['Participant'].apply(
+            lambda x: 'test' if x in test_participants
+            else 'control')
+
+    regions = ['T', 'TP', 'FT', 'all', 'T_and_TP']
+    datasets = ['beta', 'ml', 'pink']
+    datasets_compare = ['ml', 'pink']
+    bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
+    averages = pd.DataFrame(columns=['dataset', 'dataset compare', 'band', 'group compare', 'region', 't', 'p'])
+    participants_to_include = ['T', 'V', 'St', 'J', 'El', 'P',
+                               'H', 'Zo', 'B', 'S', 'A']
+    percentage_change_df = pd.concat([percentage_change_df], ignore_index=True)
+
+    for region in regions:
+        for band in bands:
+            for dataset in datasets:
+                if dataset == 'pink':
+                    groups = ['test', 'control', 'all']
+                else:
+                    groups = ['test']
+                for compare_ds in datasets_compare:
+                    if compare_ds == 'pink':
+                        groups_compare = ['test', 'control', 'all']
+                        # groups_compare = ['control']
+                    else:
+                        groups_compare = ['test']
+                    for group in groups_compare:
+                        if dataset == compare_ds and group == 'test':
+                            continue
+                        if group == 'all':
+                            percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                                           (percentage_change_df.dataset == dataset) &
+                                                                           (percentage_change_df.Participant.isin(
+                                                                               participants_to_include))]
+                            percentage_above_scoped_compare = percentage_change_df[(percentage_change_df.band == band) &
+                                                                                   (
+                                                                                           percentage_change_df.dataset == compare_ds) &
+                                                                                   (
+                                                                                       percentage_change_df.Participant.isin(
+                                                                                           participants_to_include))]
+
+                        else:
+                            percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                                           (percentage_change_df.dataset == dataset) &
+                                                                           (percentage_change_df.Participant.isin(
+                                                                               participants_to_include)) &
+                                                                           (percentage_change_df.group == 'test')]
+                            percentage_above_scoped_compare = percentage_change_df[(percentage_change_df.band == band) &
+                                                                                   (
+                                                                                           percentage_change_df.dataset == compare_ds) &
+                                                                                   (
+                                                                                       percentage_change_df.Participant.isin(
+                                                                                           participants_to_include)) &
+                                                                                   (
+                                                                                           percentage_change_df.group == group)]
+
+                        if region == 'all':
+                            percentage_region_scoped = percentage_above_scoped[
+                                (percentage_above_scoped.region == 'average')]
+                            percentage_region_scoped_compare = percentage_above_scoped_compare[
+                                (percentage_above_scoped_compare.region == 'average')]
+                            # percentage_region_scoped = percentage_above_scoped
+                        elif region == 'T_and_TP':
+                            percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region.isin(
+                                ['T', 'TP']))]
+                            percentage_region_scoped_compare = percentage_above_scoped_compare[
+                                (percentage_above_scoped_compare.region.isin(
+                                    ['T', 'TP']))]
+                        else:
+                            percentage_region_scoped = percentage_above_scoped[
+                                (percentage_above_scoped.region == region)]
+                            percentage_region_scoped_compare = percentage_above_scoped_compare[
+                                (percentage_above_scoped_compare.region == region)]
+
+                        # print(percentage_region_scoped_compare[['3', '6', '9', '12', '15', 'average']].values.flatten())
+                        t, p = ttest_ind(percentage_region_scoped[['3', '6', '9', '12', '15', 'average']].values.
+                                         flatten(),
+                                         percentage_region_scoped_compare[['3', '6', '9', '12', '15', 'average']].values.
+                                         flatten(), equal_var=False, permutations=300)
+                        # alternative = 'greater'
+                        # t, p = ttest_ind_from_stats(mean1=percentage_region_scoped['%above'].mean(), std1=
+                        #                             np.std(percentage_region_scoped['%above']),
+                        #                             nobs1=len(percentage_region_scoped['%above']),
+                        #                             mean2=percentage_region_scoped_compare['%above'].mean(),
+                        #                             std2=np.std(percentage_region_scoped_compare['%above']),
+                        #                             nobs2=len(percentage_region_scoped_compare['%above']),
+                        #                             equal_var=False, alternative='greater')
+                        result = {'dataset': dataset, 'dataset compare': compare_ds, 'band': band, 'group compare':
+                            group, 'region': region,
+                                  't': t,
+                                  'p': p}
+                        # print(result)
+                        averages = averages.append(result, ignore_index=True)
+
+    # percentage_change_df.to_csv(filename, index=False)
+    for band in bands:
+        averages_band_scoped = averages[averages.band == band]
+        averages_band_sorted = averages_band_scoped.sort_values(by=['dataset', 'group compare', 'dataset compare'])
+        averages_band_sorted.to_csv(f"meta_analysis/{band}_percentage_increase_t_test_{modality}", index=False)
+
+
+def t_test_power_tmp(modality):
+    if modality == 'power':
+        filename = power_analysis_file
+        # filename = percentage_power_analysis_file
+    else:
+        filename = percentage_coherence_analysis_file
+
+    percentage_change_df = pd.read_csv(filename, skipinitialspace=True)
+    # percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
+    percentage_change_df = percentage_change_df.sort_values(by=['dataset_name', 'band'])
+    if 'group' not in percentage_change_df.keys():
+        percentage_change_df['group'] = percentage_change_df['participantID'].apply(
+            lambda x: 'test' if x in test_participants
+            else 'control')
+    # TODO Increase this by expanding to other diff values to justify statistical significance
+    percentage_change_df['overall'] = percentage_change_df['end'] - percentage_change_df['start']
+    percentage_change_df['overall'] = percentage_change_df['overall'].abs()
+    percentage_change_df['start_three'] = percentage_change_df['three_min'] - percentage_change_df['start']
+    percentage_change_df['start_three'] = percentage_change_df['start_three'].abs()
+    percentage_change_df['start_six'] = percentage_change_df['six_min'] - percentage_change_df['start']
+    percentage_change_df['start_six'] = percentage_change_df['start_six'].abs()
+    percentage_change_df['start_nine'] = percentage_change_df['nine_min'] - percentage_change_df['start']
+    percentage_change_df['start_nine'] = percentage_change_df['start_nine'].abs()
+    percentage_change_df['start_twelve'] = percentage_change_df['twelve_min'] - percentage_change_df['start']
+    percentage_change_df['start_twelve'] = percentage_change_df['start_twelve'].abs()
+    percentage_change_df['increased_overall'] = percentage_change_df['overall'].apply(lambda x: 2 if x > 0 else 1)
+    # percentage_change_df = pd.concat([percentage_change_df] * 5, ignore_index=True)
+
+    regions = ['T', 'TP', 'FT', 'T_and_TP']
+    datasets = ['beta', 'ml', 'pink']
+    datasets_compare = ['ml', 'pink']
+    bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
+    averages = pd.DataFrame(columns=['dataset', 'dataset compare', 'band', 'group compare', 'region', 't', 'p'])
+    participants_to_include = ['T', 'V', 'St', 'J', 'El', 'P',
+                               'H', 'Zo', 'B', 'S', 'A']
+
+    for region in regions:
+        for band in bands:
+            for dataset in datasets:
+                if dataset == 'pink':
+                    groups = ['test', 'control', 'all']
+                else:
+                    groups = ['test']
+                for compare_ds in datasets_compare:
+                    if compare_ds == 'pink':
+                        groups_compare = ['test', 'control', 'all']
+                    else:
+                        groups_compare = ['test']
+                    for group in groups_compare:
+                        if group == 'all':
+                            percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                                           (
+                                                                                   percentage_change_df.dataset_name == dataset) &
+                                                                           (percentage_change_df.participantID.isin(
+                                                                               participants_to_include))]
+                            percentage_above_scoped_compare = percentage_change_df[(percentage_change_df.band == band) &
+                                                                                   (
+                                                                                           percentage_change_df.dataset_name == compare_ds) &
+                                                                                   (
+                                                                                       percentage_change_df.participantID.isin(
+                                                                                           participants_to_include))]
+                        else:
+                            percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                                           (
+                                                                                   percentage_change_df.dataset_name == dataset) &
+                                                                           (percentage_change_df.participantID.isin(
+                                                                               participants_to_include)) &
+                                                                           (percentage_change_df.group == 'test')]
+                            percentage_above_scoped_compare = percentage_change_df[(percentage_change_df.band == band) &
+                                                                                   (
+                                                                                           percentage_change_df.dataset_name == compare_ds) &
+                                                                                   (
+                                                                                       percentage_change_df.participantID.isin(
+                                                                                           participants_to_include)) &
+                                                                                   (
+                                                                                           percentage_change_df.group == group)]
+
+                        if region == 'all':
+                            percentage_region_scoped = percentage_above_scoped[
+                                (percentage_above_scoped.region == 'average')]
+                            percentage_region_scoped_compare = percentage_above_scoped_compare[
+                                (percentage_above_scoped_compare.region == 'average')]
+                            # percentage_region_scoped = percentage_above_scoped
+                        elif region == 'T_and_TP':
+                            percentage_region_scoped = percentage_above_scoped[(percentage_above_scoped.region.isin(
+                                ['T', 'TP']))]
+                            percentage_region_scoped_compare = percentage_above_scoped_compare[
+                                (percentage_above_scoped_compare.region.isin(
+                                    ['T', 'TP']))]
+                        else:
+                            percentage_region_scoped = percentage_above_scoped[
+                                (percentage_above_scoped.region == region)]
+                            percentage_region_scoped_compare = percentage_above_scoped_compare[
+                                (percentage_above_scoped_compare.region == region)]
+
+                        t, p = ttest_ind(percentage_region_scoped[['overall', 'start_three', 'start_six', 'start_nine',
+                                                                   'start_twelve']].values.
+                                         flatten(),
+                                         percentage_region_scoped_compare[
+                                             ['overall', 'start_three', 'start_six', 'start_nine', 'start_twelve']].
+                                         values.flatten(), equal_var=False, permutations=500, alternative='greater')
+                        # t, p = ttest_ind(percentage_region_scoped['%above'],
+                        #                  percentage_region_scoped_compare['%above'], equal_var=False,
+                        #                  permutations=500, alternative='greater')
+                        # alternative = 'greater'
+                        # t, p = ttest_ind_from_stats(mean1=percentage_region_scoped['%above'].mean(), std1=
+                        #                             np.std(percentage_region_scoped['%above']),
+                        #                             nobs1=len(percentage_region_scoped['%above']),
+                        #                             mean2=percentage_region_scoped_compare['%above'].mean(),
+                        #                             std2=np.std(percentage_region_scoped_compare['%above']),
+                        #                             nobs2=len(percentage_region_scoped_compare['%above']),
+                        #                             equal_var=False, alternative='greater')
+                        result = {'dataset': dataset, 'dataset compare': compare_ds, 'band': band, 'group compare':
+                            group, 'region': region,
+                                  't': t,
+                                  'p': p}
+                        averages = averages.append(result, ignore_index=True)
+
+    # percentage_change_df.to_csv(filename, index=False)
+    for band in bands:
+        averages_band_scoped = averages[averages.band == band]
+        averages_band_sorted = averages_band_scoped.sort_values(by=['dataset', 'group compare', 'dataset compare'])
+        # averages_band_sorted.to_csv(f"meta_analysis/{band}_percentage_increase_t_test_{modality}", index=False)
+        averages_band_sorted.to_csv(f"meta_analysis/{band}_overall_t_test_{modality}", index=False)
+
+
+# analyse_results(modality='power')
+
+# analyse_percentage_change(modality='power')
+t_test(modality='power')
+# t_test_power_tmp(modality='power')
+
 # record_action_order()
 
 # k_means_analysis()

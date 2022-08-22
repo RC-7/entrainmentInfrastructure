@@ -26,7 +26,6 @@ def main():
     # ds_name = 'pink_audio'
     # participants = ['Full_run_V', 'Full_run_A', 'Full_run_B', 'Full_run_El', 'Full_run_H', 'Full_run_Jasp',
     #                 'Full_run_D', 'Full_run_S', 'Full_run_Zo', 'Full_run_P', 'Full_run_J']
-    # TODO NEED to pull actions and state into a set of csv files so that can analyse together!
     # TODO thread this
     # text_file = open(power_analysis_file, "w")
     # power_summary_columns = "participantID, dataset_name, band, region, start, end, max, min, three_min, six_min, " \
