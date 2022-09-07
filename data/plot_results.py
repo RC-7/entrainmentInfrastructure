@@ -13,6 +13,22 @@ test = ['V', 'A', 'S', 'D', 'J', 'T']
 control = ['B', 'El', 'Zo', 'H', 'P', 'St']
 
 
+def plot_mean_abs_diff():
+    for band in bands:
+        filename = f'meta_analysis/{band}_stats_power'
+        df = pd.read_csv(filename)
+        df = df[(df.region != 'all')]
+        df["recording"] = df['group'].astype(str) + "  group, " + df["dataset"] + " stimulus"
+        df["recording"] = df["recording"].str.replace('pink', 'control')
+        df['mean absolute difference'] = df['mean_abs_diff']
+        sns.barplot(data=df, x="region", y='mean absolute difference', hue='recording')
+        filename_save = f'figures/mean_abs_diff_{band}.pdf'
+        plt.tight_layout()
+        plt.savefig(filename_save)
+        plt.close()
+
+
+
 def plot_mean_increasing():
     for band in bands:
         filename = f'meta_analysis/{band}_metaIncreasing_power'
@@ -63,7 +79,8 @@ def plot_increase_count_buckets():
 
 def main():
     # plot_increase_count_buckets()
-    plot_mean_increasing()
+    # plot_mean_increasing()
+    plot_mean_abs_diff()
 
 
 if __name__ == '__main__':
