@@ -3,6 +3,8 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 import numpy as np
 
+from data.constants import percentage_power_analysis_file, percentage_coherence_analysis_file, test_participants
+
 datasets = ['ml', 'beta', 'pink']
 groups = ['test', 'control', 'all']
 regions = ['T', 'TP', 'FT', 'all']
@@ -11,6 +13,38 @@ bands = ['beta', 'alpha', 'theta']
 
 test = ['V', 'A', 'S', 'D', 'J', 'T']
 control = ['B', 'El', 'Zo', 'H', 'P', 'St']
+
+
+def boxplot_percentage(modality='power'):
+    if modality == 'power':
+        filename = percentage_power_analysis_file
+    else:
+        filename = percentage_coherence_analysis_file
+    percentage_change_df = pd.read_csv(filename, skipinitialspace=True)
+    percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
+    percentage_change_df["recording"] = percentage_change_df['group'].astype(str) + "  group\n, " + percentage_change_df[
+        "dataset"] + " stimulus"
+    percentage_change_df["recording"] = percentage_change_df["recording"].str.replace('pink', 'control')
+    if 'group' not in percentage_change_df.keys():
+        percentage_change_df['group'] = percentage_change_df['Participant'].apply(
+            lambda x: 'test' if x in test_participants
+            else 'control')
+
+    regions = ['T', 'TP', 'FT']
+    participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
+                               'H', 'Zo', 'B', 'S', 'A']
+    for band in bands:
+        percentage_change_df['% above initial'] = percentage_change_df['average']
+        percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                       (percentage_change_df.Participant.isin(
+                                                           participants_to_include)) & (percentage_change_df.region.isin(
+            regions))]
+        sns.boxplot(data=percentage_above_scoped, x='recording', y='% above initial', hue='region',
+                    medianprops=dict(color="red", alpha=0.7), showmeans=True)
+        filename_save = f'figures/%change_bw_{band}.pdf'
+        plt.tight_layout()
+        plt.savefig(filename_save)
+        plt.close()
 
 
 def plot_time_count_changes():
@@ -56,7 +90,6 @@ def plot_mean_abs_diff():
         plt.close()
 
 
-
 def plot_mean_increasing():
     for band in bands:
         filename = f'meta_analysis/{band}_metaIncreasing_power'
@@ -66,11 +99,12 @@ def plot_mean_increasing():
         df["recording"] = df['group'].astype(str) + "  group,\n" + df["dataset"] + " stimulus"
         df["recording"] = df["recording"].str.replace('pink', 'control')
         df["mean increasing count"] = df['mean']
-        sns.barplot(data=df, x="recording",  y='mean increasing count')
+        sns.barplot(data=df, x="recording", y='mean increasing count')
         filename_save = f'figures/mean_increase_count_{band}.pdf'
         plt.tight_layout()
         plt.savefig(filename_save)
         plt.close()
+
 
 def plot_increase_count_buckets():
     for band in bands:
@@ -109,7 +143,9 @@ def main():
     # plot_increase_count_buckets()
     # plot_mean_increasing()
     # plot_mean_abs_diff()
-    plot_time_count_changes()
+    # plot_time_count_changes()
+    boxplot_percentage()
+
 
 if __name__ == '__main__':
     main()
