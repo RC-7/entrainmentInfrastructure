@@ -61,5 +61,8 @@ __pycache__
 *.h5
 *.png
 *.npy
+tst/*.m4a
+tst/*.csv
+tst/*.pdf
 data/**/
 data/*.csv
