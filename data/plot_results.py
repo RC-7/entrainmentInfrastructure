@@ -13,6 +13,34 @@ test = ['V', 'A', 'S', 'D', 'J', 'T']
 control = ['B', 'El', 'Zo', 'H', 'P', 'St']
 
 
+def plot_time_count_changes():
+    for band in bands:
+        filename = f'meta_analysis/{band}_increasingCount_power'
+        df = pd.read_csv(filename)
+        df["recording"] = df['group'].astype(str) + "  group, " + df["dataset"] + " stimulus"
+        df["recording"] = df["recording"].str.replace('pink', 'control')
+        collapsing_columns = ['increased_start_three', 'increased_start_six', 'increased_start_nine',
+                              'increased_start_twelve', 'increased_overall']
+        unique_recordings = df['recording'].unique()
+        colours = ['green', 'blue', 'red', 'orange']
+        colour_iter = 0
+        for rec in unique_recordings:
+            ds_scoped = df[(df['recording'] == rec)]
+            values = []
+            for c in collapsing_columns:
+                values.append(ds_scoped[[c]].mean()[0])
+            time = [3, 6, 9, 12, 15]
+            plt.plot(time, values, color=colours[colour_iter])
+            colour_iter += 1
+        plt.legend(unique_recordings)
+        plt.xlabel('time evaluated')
+        plt.ylabel('mean number of increasing electrodes')
+        filename_save = f'figures/time_changes_{band}.pdf'
+        plt.tight_layout()
+        plt.savefig(filename_save)
+        plt.close()
+
+
 def plot_mean_abs_diff():
     for band in bands:
         filename = f'meta_analysis/{band}_stats_power'
@@ -80,8 +108,8 @@ def plot_increase_count_buckets():
 def main():
     # plot_increase_count_buckets()
     # plot_mean_increasing()
-    plot_mean_abs_diff()
-
+    # plot_mean_abs_diff()
+    plot_time_count_changes()
 
 if __name__ == '__main__':
     main()
