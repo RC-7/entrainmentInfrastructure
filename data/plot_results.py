@@ -13,6 +13,27 @@ bands = ['beta', 'alpha', 'theta']
 
 test = ['V', 'A', 'S', 'D', 'J', 'T']
 control = ['B', 'El', 'Zo', 'H', 'P', 'St']
+regions = ['T', 'TP', 'FT']
+
+
+def t_test_percentage():
+    for band in bands:
+        filename = f'meta_analysis/{band}_percentage_increase_t_test_power'
+        df = pd.read_csv(filename)
+        df["comparison"] = df['dataset'].astype(str) + " stimulus compared to \n " + df['group compare'].astype(str) + "  group, " + df["dataset compare"] + " stimulus"
+        df["comparison"] = df["comparison"].str.replace('pink', 'control')
+        datasets = ['beta', 'ml']
+        df = df[(df['group compare'] != 'all')]
+        # for ds in datasets:
+        scoped_df = df[(df.region.isin(
+            regions))]
+        graph = sns.barplot(data=scoped_df, x='p', y='comparison', hue='region')
+        graph.axvline(0.05)
+        # graph.axhline(0.08, color='red')
+        plt.tight_layout()
+        filename_save = f'figures/t_test_{band}.pdf'
+        plt.savefig(filename_save)
+        plt.close()
 
 
 def boxplot_percentage(modality='power'):
@@ -144,8 +165,8 @@ def main():
     # plot_mean_increasing()
     # plot_mean_abs_diff()
     # plot_time_count_changes()
-    boxplot_percentage()
-
+    # boxplot_percentage()
+    t_test_percentage()
 
 if __name__ == '__main__':
     main()
