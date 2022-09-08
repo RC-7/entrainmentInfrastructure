@@ -16,6 +16,27 @@ control = ['B', 'El', 'Zo', 'H', 'P', 'St']
 regions = ['T', 'TP', 'FT']
 
 
+def std_div_plot():
+    for band in bands:
+        filename = f'meta_analysis/{band}_stats_power'
+        df = pd.read_csv(filename)
+        df = df[(df.region != 'all')]
+        df["recording"] = df['group'].astype(str) + "  group " + df["dataset"] + " stimulus\n"
+        df["recording"] = df["recording"].str.replace('pink', 'control')
+        df['start'] = df['std_start']
+        df['end'] = df['std_end']
+        df = df[['recording', 'start', 'end', 'region']]
+        ax = df.set_index(['recording', 'region']).plot( kind='barh', stacked=True)
+        labels = [item.get_text() for item in ax.get_yticklabels()]
+        labels = [s.replace("(", "").replace(')', "") + ' region' for s in labels]
+        ax.set_yticklabels(labels)
+        plt.xlabel('standard deviation')
+        filename_save = f'figures/std_div_{band}.pdf'
+        plt.tight_layout()
+        plt.savefig(filename_save)
+        plt.close()
+
+
 def t_test_percentage():
     for band in bands:
         filename = f'meta_analysis/{band}_percentage_increase_t_test_power'
@@ -166,7 +187,8 @@ def main():
     # plot_mean_abs_diff()
     # plot_time_count_changes()
     # boxplot_percentage()
-    t_test_percentage()
+    # t_test_percentage()
+    std_div_plot()
 
 if __name__ == '__main__':
     main()
