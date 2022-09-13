@@ -37,14 +37,15 @@ def std_div_plot():
         plt.close()
 
 
-def t_test_percentage():
+def t_test_percentage(file_suffix='_percentage_increase_t_test_power'):
     for band in bands:
-        filename = f'meta_analysis/{band}_percentage_increase_t_test_power'
+        filename = f'meta_analysis/{band}_{file_suffix}'
         df = pd.read_csv(filename)
-        df["comparison"] = df['dataset'].astype(str) + " stimulus compared to \n " + df['group compare'].astype(str) + "  group, " + df["dataset compare"] + " stimulus"
+        df["comparison"] = df['dataset'].astype(str) + " stimulus compared to \n " + df['group compare'].astype(str) +\
+                           "  group, " + df["dataset compare"] + " stimulus"
         df["comparison"] = df["comparison"].str.replace('pink', 'control')
         datasets = ['beta', 'ml']
-        df = df[(df['group compare'] != 'all')]
+        df = df[(df['group compare'] != 'all') & (df['dataset'] != 'pink')]
         # for ds in datasets:
         scoped_df = df[(df.region.isin(
             regions))]
@@ -52,7 +53,43 @@ def t_test_percentage():
         graph.axvline(0.05)
         # graph.axhline(0.08, color='red')
         plt.tight_layout()
-        filename_save = f'figures/t_test_{band}.pdf'
+        filename_save = f'figures/{file_suffix}_{band}.pdf'
+        plt.savefig(filename_save)
+        plt.close()
+
+
+def boxplot_percentage_comparative(modality='power'):
+    if modality == 'power':
+        filename = percentage_power_analysis_file
+    else:
+        filename = percentage_coherence_analysis_file
+
+    exploit = ['V', 'T']
+    percentage_change_df = pd.read_csv(filename, skipinitialspace=True)
+    percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
+    percentage_change_df = percentage_change_df[(percentage_change_df.dataset == 'ml')]
+    percentage_change_df["recording"] = np.where(percentage_change_df['Participant'].isin(exploit), 'exploit', 'explore')
+    # percentage_change_df["recording"] = percentage_change_df["recording"].str.replace('pink', 'control')
+    if 'group' not in percentage_change_df.keys():
+        percentage_change_df['group'] = percentage_change_df['Participant'].apply(
+            lambda x: 'test' if x in test_participants
+            else 'control')
+
+    regions = ['T', 'TP', 'FT']
+
+    participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
+                               'H', 'Zo', 'B', 'S', 'A']
+    for band in bands:
+        percentage_change_df['% above initial'] = percentage_change_df['average']
+        percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                                                       (percentage_change_df.Participant.isin(
+                                                           participants_to_include)) & (
+                                                       percentage_change_df.region.isin(
+                                                           regions))]
+        sns.boxplot(data=percentage_above_scoped, x='recording', y='% above initial', hue='region',
+                    medianprops=dict(color="red", alpha=0.7), showmeans=True)
+        filename_save = f'figures/%change_mlcomp_{band}.pdf'
+        plt.tight_layout()
         plt.savefig(filename_save)
         plt.close()
 
@@ -60,8 +97,11 @@ def t_test_percentage():
 def boxplot_percentage(modality='power'):
     if modality == 'power':
         filename = percentage_power_analysis_file
+        value_key = 'average'
     else:
         filename = percentage_coherence_analysis_file
+        value_key = '%above'
+        bands = ['beta_entrain', 'beta_entrain_low']
     percentage_change_df = pd.read_csv(filename, skipinitialspace=True)
     percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
     percentage_change_df["recording"] = percentage_change_df['group'].astype(str) + "  group\n, " + percentage_change_df[
@@ -76,22 +116,28 @@ def boxplot_percentage(modality='power'):
     participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
                                'H', 'Zo', 'B', 'S', 'A']
     for band in bands:
-        percentage_change_df['% above initial'] = percentage_change_df['average']
+        percentage_change_df['% above initial'] = percentage_change_df[value_key]
         percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
                                                        (percentage_change_df.Participant.isin(
                                                            participants_to_include)) & (percentage_change_df.region.isin(
             regions))]
         sns.boxplot(data=percentage_above_scoped, x='recording', y='% above initial', hue='region',
                     medianprops=dict(color="red", alpha=0.7), showmeans=True)
-        filename_save = f'figures/%change_bw_{band}.pdf'
+        filename_save = f'figures/percentage_change_{modality}_bw_{band}.pdf'
         plt.tight_layout()
         plt.savefig(filename_save)
         plt.close()
 
 
-def plot_time_count_changes():
+def plot_time_count_changes(modality='power'):
+    if modality == 'coherence':
+        bands = ['beta_entrain', 'beta_entrain_low']
     for band in bands:
-        filename = f'meta_analysis/{band}_increasingCount_power'
+        # filename = f'meta_analysis/{band}_increasingCount_power'
+        if modality == 'power':
+            filename = f'meta_analysis/{band}_increasingCount_power'
+        else:
+            filename = f'meta_analysis/{band}_increasingCount_coherence'
         df = pd.read_csv(filename)
         df["recording"] = df['group'].astype(str) + "  group, " + df["dataset"] + " stimulus"
         df["recording"] = df["recording"].str.replace('pink', 'control')
@@ -111,30 +157,40 @@ def plot_time_count_changes():
         plt.legend(unique_recordings)
         plt.xlabel('time evaluated')
         plt.ylabel('mean number of increasing electrodes')
-        filename_save = f'figures/time_changes_{band}.pdf'
+        filename_save = f'figures/time_changes_{modality}_{band}.pdf'
         plt.tight_layout()
         plt.savefig(filename_save)
         plt.close()
 
 
-def plot_mean_abs_diff():
+def plot_mean_abs_diff(modality='power'):
+    if modality == 'coherence':
+        bands = ['beta_entrain', 'beta_entrain_low']
     for band in bands:
-        filename = f'meta_analysis/{band}_stats_power'
+        if modality == 'power':
+            filename = f'meta_analysis/{band}_stats_power'
+        else:
+            filename = f'meta_analysis/{band}_stats_coherence'
         df = pd.read_csv(filename)
         df = df[(df.region != 'all')]
         df["recording"] = df['group'].astype(str) + "  group, " + df["dataset"] + " stimulus"
         df["recording"] = df["recording"].str.replace('pink', 'control')
         df['mean absolute difference'] = df['mean_abs_diff']
         sns.barplot(data=df, x="region", y='mean absolute difference', hue='recording')
-        filename_save = f'figures/mean_abs_diff_{band}.pdf'
+        filename_save = f'figures/mean_abs_diff_{modality}_{band}.pdf'
         plt.tight_layout()
         plt.savefig(filename_save)
         plt.close()
 
 
-def plot_mean_increasing():
+def plot_mean_increasing(modality='power'):
+    if modality == 'coherence':
+        bands = ['beta_entrain', 'beta_entrain_low']
     for band in bands:
-        filename = f'meta_analysis/{band}_metaIncreasing_power'
+        if modality == 'power':
+            filename = f'meta_analysis/{band}_metaIncreasing_power'
+        else:
+            filename = f'meta_analysis/{band}_metaIncreasing_coherence'
         df = pd.read_csv(filename)
         df = df[(df.metric == 'increased_overall') & (df.group != 'all')]
         # df["test"] = np.where(df["dataset"] == "pink", f'{df["group"]}, control', f'{df["group"]}, {df["dataset"]}')
@@ -142,15 +198,20 @@ def plot_mean_increasing():
         df["recording"] = df["recording"].str.replace('pink', 'control')
         df["mean increasing count"] = df['mean']
         sns.barplot(data=df, x="recording", y='mean increasing count')
-        filename_save = f'figures/mean_increase_count_{band}.pdf'
+        filename_save = f'figures/mean_increase_count_{modality}_{band}.pdf'
         plt.tight_layout()
         plt.savefig(filename_save)
         plt.close()
 
 
-def plot_increase_count_buckets():
+def plot_increase_count_buckets(modality='power'):
+    if modality == 'coherence':
+        bands = ['beta_entrain', 'beta_entrain_low']
     for band in bands:
-        filename = f'meta_analysis/{band}_metaIncreasing_power'
+        if modality == 'power':
+            filename = f'meta_analysis/{band}_metaIncreasing_power'
+        else:
+            filename = f'meta_analysis/{band}_metaIncreasing_coherence'
         df = pd.read_csv(filename)
 
         df = df[(df.metric == 'increased_overall') & (df.group != 'all')]
@@ -176,19 +237,22 @@ def plot_increase_count_buckets():
 
         bar_plot = sns.barplot(data=new_format, x="Increasing count bucket", hue="key", y='Count')
         # fig = bar_plot.get_figure()
-        filename_save = f'figures/increaseCountBucket_{band}.pdf'
+        filename_save = f'figures/increaseCountBucket_{modality}_{band}.pdf'
         plt.savefig(filename_save)
         plt.close()
 
 
 def main():
-    # plot_increase_count_buckets()
-    # plot_mean_increasing()
-    # plot_mean_abs_diff()
-    # plot_time_count_changes()
-    # boxplot_percentage()
-    # t_test_percentage()
-    std_div_plot()
+    # plot_increase_count_buckets(modality='coherence')
+    # plot_mean_increasing(modality='coherence')
+    # plot_mean_abs_diff(modality='coherence')
+    plot_time_count_changes(modality='coherence')
+    # boxplot_percentage(modality='coherence')
+    # t_test_percentage(file_suffix='overall_t_test_power')
+    # std_div_plot()
+
+    # boxplot_percentage_comparative()
+
 
 if __name__ == '__main__':
     main()
