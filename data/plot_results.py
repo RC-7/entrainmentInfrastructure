@@ -277,6 +277,41 @@ def plot_power_values():
             plt.ylabel('power (dB)')
 
 
+def plot_coherence_values():
+    # ds_name = 'beta_audio'
+    ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
+    bands = ['beta_entrain', 'beta_entrain_low']
+    for ds_name in ds_names:
+        for band in bands:
+            fig, ax = plt.subplots()
+            for region in regions:
+                np_ds_filename_data = f'Clustering/T_{ds_name}_{band}_Clustering_{region}.npy'
+                power_values = np.load(np_ds_filename_data, allow_pickle=True)[1]
+                time = np.load(np_ds_filename_data, allow_pickle=True)[0]
+                ax.plot(time, power_values)
+            ax.legend(regions)
+            filename_save = f'figures/test_participant_raw_clustering_{band}_{ds_name}.pdf'
+            plt.savefig(filename_save)
+            plt.close()
+            plt.xlabel('time (min)')
+            plt.ylabel('clustering coefficient')
+
+    ds_names = ['pink_audio']
+    for ds_name in ds_names:
+        for band in bands:
+            fig, ax = plt.subplots()
+            for region in regions:
+                np_ds_filename_data = f'Clustering/El_{ds_name}_{band}_Clustering_{region}.npy'
+                power_values = np.load(np_ds_filename_data, allow_pickle=True)[1]
+                time = np.load(np_ds_filename_data, allow_pickle=True)[0]
+                ax.plot(time, power_values)
+            ax.legend(regions)
+            filename_save = f'figures/control_participant_clusterings_{band}_{ds_name}.pdf'
+            plt.savefig(filename_save)
+            plt.close()
+            plt.xlabel('time (min)')
+            plt.ylabel('clustering coefficient')
+
 
 def main():
     # plot_increase_count_buckets(modality='coherence')
@@ -286,7 +321,8 @@ def main():
     # boxplot_percentage(modality='coherence')
     # t_test_percentage(file_suffix='overall_t_test_power')
     # std_div_plot()
-    plot_power_values()
+    # plot_power_values()
+    plot_coherence_values()
     # boxplot_percentage_comparative()
 
 
