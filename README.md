@@ -8,11 +8,11 @@ This repository consists of several aspects of code needed to run an entrainment
 The repository is divided into different directories:
 - lambda_functions: Lambda functions deployed to AWS that allow the experiment to be run. Deployment is handled by Terraform and Docker.
 - data: Encloses Data analysis and meta analysis methods used to clean and analyse data recorded using a power and connectivity analysis. participant_info.py files are required to specify participant information of recorded data.
-  - Further, holds data recorded using the custom suite developed.
+  - Further, it holds data recorded using the custom suite developed. This is not on the repository.
   - Holds code to plot figures from meta analysis methods run on data.
   - Holds results of data analysis once run on recorded data.
-- testing_interface: Holds code used for testing interface of experiment. This encompasses code to record data from a Gtec HIAmp using the API, Machine Learning code to use Q learning to lean an optimal policy to control the entrainment stimulus and all other aspects required to run the experiment which includes GUI and interfaces used to run the experiment.
-- runners: Code to wrap docker and terraform commands required to run and deploy the experiment.
+- testing_interface: Holds code used for testing interface of experiment. This encompasses code to record data from a Gtec HIAmp using the API, Machine Learning code to use Q learning that learns an optimal policy to control the entrainment stimulus and all other aspects required to run the experiment which includes GUI and other interfaces used to run the experiment.
+- runners: Code to wrap docker and terraform commands assisting in running and deploying the experiment.
 - tst: Code used to test various aspects of the system including the AWS infrastructure.
 - Dockerfile: Docker file for experiment
 
@@ -32,6 +32,7 @@ Runner's allow easier actions for terraform and docker. From the runner's direct
 ![](Images/Architecture.jpg?raw=true)
 - tst directory has an `eeg_device_testing.py` file that is useful to record data from the gtec device without using a GUI.
 - Infrusture has been designed to work with the correpsonding game developed in Unity for the Oculus Quest 2. The code for this should be in the same directory as this project and can be found at [OculusEntrainment](https://github.com/RC-7/OculusEntrainment).
+- `data_analysis_runner.py` is the first point of entry for analysis and running analysis workflows. `meta_analysis_runner.py` runs a meta analysis on power and connecitivity analysis applied in the data analysis runner.
 
 Note: Auth lambda emails participants who have been authenticated to identify themselves. The Email password will be stored in AWS Secrets Manager. This step needs to be completed via the console. Currently, it is an env variable that needs to be manually set for the Lambda. This has been done for the privacy of AWS Secrets Manager.
 
@@ -39,4 +40,5 @@ TODO:
 - Rework the participant_info system to hold information around participant data recorded.
 - Improve explanation of different aspects of the code base.
 - Clean code.
-- Update `pythonPackages.txt` file
+- Update `pythonPackages.txt` file.
+- Commit finished GUI from local files.
