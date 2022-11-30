@@ -308,6 +308,9 @@ def t_test(modality):
     regions = ['T', 'TP', 'FT', 'all', 'T_and_TP']
     datasets = ['ml']
     datasets_compare = ['ml', 'pink', 'beta']
+    # SWAP Below to do normal analysis. TODO make swap dynamic
+    # datasets = ['beta', 'ml', 'pink']
+    # datasets_compare = ['ml', 'pink']
     bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
     averages = pd.DataFrame(columns=['dataset', 'dataset compare', 'band', 'group compare', 'region', 't', 'p'])
     participants_to_include = ['T', 'V', 'St', 'J', 'El', 'P',
@@ -336,6 +339,11 @@ def t_test(modality):
                                                                            (percentage_change_df.dataset == dataset) &
                                                                            (percentage_change_df.Participant.isin(
                                                                                p_exploit))]
+                            # SWAP Below to do normal analysis. TODO make swap dynamic
+                            # percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                            #                                                (percentage_change_df.dataset == dataset) &
+                            #                                                (percentage_change_df.Participant.isin(
+                            #                                                    participants_to_include))]
                             percentage_above_scoped_compare = percentage_change_df[(percentage_change_df.band == band) &
                                                                                    (
                                                                                            percentage_change_df.dataset == compare_ds) &
@@ -349,6 +357,12 @@ def t_test(modality):
                                                                            (percentage_change_df.Participant.isin(
                                                                                p_exploit)) &
                                                                            (percentage_change_df.group == 'test')]
+                            # SWAP Below to do normal analysis. TODO make swap dynamic
+                            # percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
+                            #                                                (percentage_change_df.dataset == dataset) &
+                            #                                                (percentage_change_df.Participant.isin(
+                            #                                                    participants_to_include)) &
+                            #                                                (percentage_change_df.group == 'test')]
                             percentage_above_scoped_compare = percentage_change_df[(percentage_change_df.band == band) &
                                                                                    (
                                                                                            percentage_change_df.dataset == compare_ds) &
@@ -400,6 +414,7 @@ def t_test(modality):
     for band in bands:
         averages_band_scoped = averages[averages.band == band]
         averages_band_sorted = averages_band_scoped.sort_values(by=['dataset', 'group compare', 'dataset compare'])
+        # SWAP Below to do normal analysis. TODO make swap dynamic
         # averages_band_sorted.to_csv(f"meta_analysis/{band}_percentage_increase_t_test_{modality}", index=False)
         averages_band_sorted.to_csv(f"meta_analysis/{band}_T_V_{modality}", index=False)
 
