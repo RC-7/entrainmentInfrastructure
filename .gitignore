@@ -67,3 +67,4 @@ tst/*.pdf
 data/**/
 data/*.csv
 */participant_info.py
+data/custom_suite/*
