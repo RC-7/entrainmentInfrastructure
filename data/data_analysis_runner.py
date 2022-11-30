@@ -20,35 +20,31 @@ SAMPLING_SPEED = 512
 
 def main():
     # #####################################
-    # ##########  Setup  ###########
+    # ##########  Setup  ##################
     # #####################################
-    ds_name = 'beta_audio'
-    # ds_name = 'beta_audio_retest'
-    # ds_name = 'alpha_audio'
-    # ds_name = 'pink_audio'
     # TODO thread this
-    # text_file = open(power_analysis_file, "w")
-    # power_summary_columns = "participantID, dataset_name, band, region, start, end, max, min, three_min, six_min, " \
-    #                         "nine_min, twelve_min\n"
-    # text_file.write(power_summary_columns)
-    # text_file.close()
-    #
-    #
-    # text_file = open(coherence_analysis_file, "w")
-    # power_summary_columns = "participantID, dataset_name, band, region, start, end, max, min, three_min, six_min, " \
-    #                         "nine_min, twelve_min\n"
-    # text_file.write(power_summary_columns)
-    # text_file.close()
+    text_file = open(power_analysis_file, "w")
+    power_summary_columns = "participantID, dataset_name, band, region, start, end, max, min, three_min, six_min, " \
+                            "nine_min, twelve_min\n"
+    text_file.write(power_summary_columns)
+    text_file.close()
 
-    # text_file = open(percentage_power_analysis_file, "w")
-    # power_summary_columns = "Participant, dataset, band, group, region, 3, 6, 9, 12, 15, average\n"
-    # text_file.write(power_summary_columns)
-    # text_file.close()
 
-    # text_file = open(percentage_coherence_analysis_file, "w")
-    # power_summary_columns = "Participant, dataset, band, region, %above\n"
-    # text_file.write(power_summary_columns)
-    # text_file.close()
+    text_file = open(coherence_analysis_file, "w")
+    power_summary_columns = "participantID, dataset_name, band, region, start, end, max, min, three_min, six_min, " \
+                            "nine_min, twelve_min\n"
+    text_file.write(power_summary_columns)
+    text_file.close()
+
+    text_file = open(percentage_power_analysis_file, "w")
+    power_summary_columns = "Participant, dataset, band, group, region, 3, 6, 9, 12, 15, average\n"
+    text_file.write(power_summary_columns)
+    text_file.close()
+
+    text_file = open(percentage_coherence_analysis_file, "w")
+    power_summary_columns = "Participant, dataset, band, region, %above\n"
+    text_file.write(power_summary_columns)
+    text_file.close()
 
     threshold = 90
     group = ''
@@ -72,6 +68,7 @@ def main():
             group = 'control'
             ds_names = ['pink_audio']
         file_type = 'hdfs'
+        # Decide what Bands to run analysis on
         # bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
         bands = ['beta_entrain', 'beta_entrain_low']
 
@@ -97,6 +94,7 @@ def main():
                 index_dict[i] = np.index_exp[:, i]
             if run_epoch_artifacts:
                 [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='')
+                # Uncomment if want to plot sensor locations for data loaded
                 # plot_sensor_locations(raw)
 
                 cropped_data = crop_data(raw, min_crop, max_crop)
@@ -110,12 +108,12 @@ def main():
                 if run_epoch_artifacts:
                     [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope=band)
                     cropped_data = crop_data(raw, min_crop, max_crop)
+                # Uncomment if want to view data using MNE
                 # view_data(cropped_data)
                 # #####################################
                 # ##########  Connectivity  ###########
                 # #####################################
                 fn = f'{p.split("_")[-1]}_{ds_name}_{band}_Clustering'
-                # print(fn)
                 #
                 networkx_analysis(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True,
                                   filename=fn, inter_hemisphere=False, metric='clustering',
@@ -124,20 +122,21 @@ def main():
                 # ####################################
                 # #############  Power  ##############
                 # ####################################
-                # fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power'
-                # print(fn)
+                fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power'
                 # TODO account for cropping time
-                # stft_by_region(cropped_data, electrodes_to_plot, index_dict, save_plot=save_plot, filename=fn,
-                #                artifact_epochs=epochs, band=band, save_values=True)
-                # analyse_power_values(fn, band, group, ds_name)
-                # fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power_no_avg'
-                # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn, plot_averaged=True,
-                #           band=band)
-    # order_percentrage_power()
+                stft_by_region(cropped_data, electrodes_to_plot, index_dict, save_plot=save_plot, filename=fn,
+                               artifact_epochs=epochs, band=band, save_values=True)
+                analyse_power_values(fn, band, group, ds_name)
+                fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power_no_avg'
+                stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn, plot_averaged=True,
+                          band=band)
+    order_percentrage_power()
 
 
 if __name__ == '__main__':
     main()
+
+# Additional Power adn Connectivity analysis possible
 
 # ####################################
 # #############  Power  ##############

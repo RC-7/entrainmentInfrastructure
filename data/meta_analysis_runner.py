@@ -534,14 +534,10 @@ def t_test_power_tmp(modality):
 
 
 analyse_results(modality='coherence')
-
-# analyse_percentage_change(modality='power')
+analyse_percentage_change(modality='power')
 #  Currently doing ML vs non ml t test T_V ... csv files
-# t_test(modality='power')
-# test()
+t_test(modality='power')
 # Does t test for overall diff overall_t_test_...
-# t_test_power_tmp(modality='power')
-
-# record_action_order()
-
-# k_means_analysis()
+t_test_power_tmp(modality='power')
+record_action_order()
+k_means_analysis()
