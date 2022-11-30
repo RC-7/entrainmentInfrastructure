@@ -6,6 +6,12 @@ import numpy as np
 from clustering_analysis import k_means_analysis
 from scipy.stats import ttest_ind, ttest_rel, mannwhitneyu, ttest_ind_from_stats
 
+def test():
+    filename = power_analysis_file
+    power_df = pd.read_csv(filename, skipinitialspace=True)
+    print(power_df)
+    # print(power_df[1])
+
 
 def record_action_order():
     test_participant_order = ['S', 'A', 'J', 'D', 'V', 'T']
@@ -300,12 +306,13 @@ def t_test(modality):
             else 'control')
 
     regions = ['T', 'TP', 'FT', 'all', 'T_and_TP']
-    datasets = ['beta', 'ml', 'pink']
-    datasets_compare = ['ml', 'pink']
+    datasets = ['ml']
+    datasets_compare = ['ml', 'pink', 'beta']
     bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
     averages = pd.DataFrame(columns=['dataset', 'dataset compare', 'band', 'group compare', 'region', 't', 'p'])
     participants_to_include = ['T', 'V', 'St', 'J', 'El', 'P',
                                'H', 'Zo', 'B', 'S', 'A']
+    p_exploit = ['T', 'V']
     percentage_change_df = pd.concat([percentage_change_df], ignore_index=True)
 
     for region in regions:
@@ -328,7 +335,7 @@ def t_test(modality):
                             percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
                                                                            (percentage_change_df.dataset == dataset) &
                                                                            (percentage_change_df.Participant.isin(
-                                                                               participants_to_include))]
+                                                                               p_exploit))]
                             percentage_above_scoped_compare = percentage_change_df[(percentage_change_df.band == band) &
                                                                                    (
                                                                                            percentage_change_df.dataset == compare_ds) &
@@ -340,7 +347,7 @@ def t_test(modality):
                             percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
                                                                            (percentage_change_df.dataset == dataset) &
                                                                            (percentage_change_df.Participant.isin(
-                                                                               participants_to_include)) &
+                                                                               p_exploit)) &
                                                                            (percentage_change_df.group == 'test')]
                             percentage_above_scoped_compare = percentage_change_df[(percentage_change_df.band == band) &
                                                                                    (
@@ -393,7 +400,8 @@ def t_test(modality):
     for band in bands:
         averages_band_scoped = averages[averages.band == band]
         averages_band_sorted = averages_band_scoped.sort_values(by=['dataset', 'group compare', 'dataset compare'])
-        averages_band_sorted.to_csv(f"meta_analysis/{band}_percentage_increase_t_test_{modality}", index=False)
+        # averages_band_sorted.to_csv(f"meta_analysis/{band}_percentage_increase_t_test_{modality}", index=False)
+        averages_band_sorted.to_csv(f"meta_analysis/{band}_T_V_{modality}", index=False)
 
 
 def t_test_power_tmp(modality):
@@ -522,10 +530,13 @@ def t_test_power_tmp(modality):
         averages_band_sorted.to_csv(f"meta_analysis/{band}_overall_t_test_{modality}", index=False)
 
 
-# analyse_results(modality='power')
+analyse_results(modality='coherence')
 
 # analyse_percentage_change(modality='power')
-t_test(modality='power')
+#  Currently doing ML vs non ml t test T_V ... csv files
+# t_test(modality='power')
+# test()
+# Does t test for overall diff overall_t_test_...
 # t_test_power_tmp(modality='power')
 
 # record_action_order()
