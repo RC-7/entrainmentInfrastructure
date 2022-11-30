@@ -2,6 +2,7 @@ from Q_learning_interface import QLearningInterface
 import h5py
 import pandas as pd
 from math import floor
+from participant_info import training_ds_names
 
 model_parameters = {
     "states":  ['up_24', 'down_24', 'up_18', 'down_18'],
@@ -13,7 +14,6 @@ model_parameters = {
 }
 
 q_learn = QLearningInterface(model_parameters=model_parameters, model_path='models/', model_name='bciAgent')
-training_ds_names = ['Full_run_S', 'Full_run_A', 'Full_run_J', 'Full_run_D']
 ds_name = 'ml_beta_audio'
 p_count = 1
 increase_rewarding = False

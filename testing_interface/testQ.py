@@ -2,6 +2,7 @@ from operator import mod
 from Q_learning_interface import QLearningInterface
 import h5py
 import time
+from participant_info import test_Q_datapoint
 
 model_parameters = {
     "states":  ['up_24', 'down_24', 'up_18', 'down_18'],
@@ -15,7 +16,7 @@ q_learn = QLearningInterface(model_parameters=model_parameters, model_path='mode
 # q_lean.save_model()
 
 
-hf = h5py.File('../data/custom_suite/Full_run_S/beta_audio.h5', 'r')
+hf = h5py.File(f'../data/custom_suite/{test_Q_datapoint}/beta_audio.h5', 'r')
 
 samples = hf['raw_data']
 eeg_data = samples[()]

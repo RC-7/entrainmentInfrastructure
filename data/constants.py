@@ -1,4 +1,5 @@
 from util import get_hemisphere
+from participant_info import test_participants, control_participants, participants_to_include
 
 ch_names = ['Fp1', 'Fpz', 'Fp2', 'AF7', 'AF3', 'F1', 'AF8', 'F7', 'F5', 'F3', 'AF4', 'Fz', 'F2', 'F4', 'F6', 'F8',
             'FT7', 'FC5', 'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'T7', 'C5', 'C3', 'C1', 'Cz', 'C2', 'C4',
@@ -23,7 +24,4 @@ coherence_analysis_file = 'coherence_summary.csv'
 
 percentage_coherence_analysis_file = 'meta_analysis/cluster/percentageAboveCoherence'
 
-participants = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
-                'H', 'Zo', 'S', 'A', 'B']
-test_participants = ['V', 'A', 'S', 'D', 'J', 'T']
-control_participants = ['B', 'El', 'Zo', 'H', 'P', 'St']
+participants = participants_to_include

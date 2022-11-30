@@ -5,16 +5,11 @@ from constants import power_analysis_file, coherence_analysis_file, percentage_c
 import numpy as np
 from clustering_analysis import k_means_analysis
 from scipy.stats import ttest_ind, ttest_rel, mannwhitneyu, ttest_ind_from_stats
-
-def test():
-    filename = power_analysis_file
-    power_df = pd.read_csv(filename, skipinitialspace=True)
-    print(power_df)
-    # print(power_df[1])
+from participant_info import test_participant_order, participants_short, test_short, control_short, \
+    participants_to_include, p_exploit
 
 
 def record_action_order():
-    test_participant_order = ['S', 'A', 'J', 'D', 'V', 'T']
     action_times_columns = ['participant_ID', '0', '3', '6', '9', '12', '15']
     action_times = ['0', '3', '6', '9', '12', '15']
     actions_taken = pd.DataFrame(columns=action_times_columns)
@@ -56,10 +51,9 @@ def analyse_results(modality='power'):
     power_df = pd.read_csv(filename, skipinitialspace=True)
     # columns = ['participantID', 'dataset', 'band', 'region', 'start', 'end', 'max', 'min', 'three_min',
     #            'six_min', 'nine_min', 'twelve_min']
-    participants = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
-                    'H', 'Zo', 'S', 'A', 'B']
-    test = ['V', 'A', 'S', 'D', 'J', 'T']
-    control = ['B', 'El', 'Zo', 'H', 'P', 'St']
+    participants = participants_short
+    test = test_short
+    control = control_short
 
     power_df['group'] = power_df['participantID'].apply(lambda x: 'test' if x in test else 'control')
 
@@ -238,8 +232,6 @@ def analyse_percentage_change(modality):
     bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
     averages = pd.DataFrame(columns=['dataset', 'band', 'group', 'region', 'average', 'Q1', 'Q3', 'median', 'max', 'IQR'
         , 'outlier_upper_bound', 'outlier_lower_bound'])
-    participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
-                               'H', 'Zo', 'B', 'S', 'A']
 
     for region in regions:
         for band in bands:
@@ -313,9 +305,6 @@ def t_test(modality):
     # datasets_compare = ['ml', 'pink']
     bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
     averages = pd.DataFrame(columns=['dataset', 'dataset compare', 'band', 'group compare', 'region', 't', 'p'])
-    participants_to_include = ['T', 'V', 'St', 'J', 'El', 'P',
-                               'H', 'Zo', 'B', 'S', 'A']
-    p_exploit = ['T', 'V']
     percentage_change_df = pd.concat([percentage_change_df], ignore_index=True)
 
     for region in regions:
@@ -393,7 +382,8 @@ def t_test(modality):
                         # print(percentage_region_scoped_compare[['3', '6', '9', '12', '15', 'average']].values.flatten())
                         t, p = ttest_ind(percentage_region_scoped[['3', '6', '9', '12', '15', 'average']].values.
                                          flatten(),
-                                         percentage_region_scoped_compare[['3', '6', '9', '12', '15', 'average']].values.
+                                         percentage_region_scoped_compare[
+                                             ['3', '6', '9', '12', '15', 'average']].values.
                                          flatten(), equal_var=False, permutations=300)
                         # alternative = 'greater'
                         # t, p = ttest_ind_from_stats(mean1=percentage_region_scoped['%above'].mean(), std1=
@@ -452,8 +442,6 @@ def t_test_power_tmp(modality):
     datasets_compare = ['ml', 'pink']
     bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
     averages = pd.DataFrame(columns=['dataset', 'dataset compare', 'band', 'group compare', 'region', 't', 'p'])
-    participants_to_include = ['T', 'V', 'St', 'J', 'El', 'P',
-                               'H', 'Zo', 'B', 'S', 'A']
 
     for region in regions:
         for band in bands:

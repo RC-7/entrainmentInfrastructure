@@ -4,6 +4,7 @@ import seaborn as sns
 import numpy as np
 
 from data.constants import percentage_power_analysis_file, percentage_coherence_analysis_file, test_participants
+from participant_info import test_short, control_short, p_exploit, participants_to_include
 
 datasets = ['ml', 'beta', 'pink']
 groups = ['test', 'control', 'all']
@@ -11,8 +12,8 @@ regions = ['T', 'TP', 'FT', 'all']
 
 bands = ['beta', 'alpha', 'theta']
 
-test = ['V', 'A', 'S', 'D', 'J', 'T']
-control = ['B', 'El', 'Zo', 'H', 'P', 'St']
+test = test_short
+control = control_short
 regions = ['T', 'TP', 'FT']
 
 
@@ -64,7 +65,7 @@ def boxplot_percentage_comparative(modality='power'):
     else:
         filename = percentage_coherence_analysis_file
 
-    exploit = ['V', 'T']
+    exploit = p_exploit
     percentage_change_df = pd.read_csv(filename, skipinitialspace=True)
     percentage_change_df = percentage_change_df.sort_values(by=['dataset', 'band'])
     percentage_change_df = percentage_change_df[(percentage_change_df.dataset == 'ml')]
@@ -77,8 +78,6 @@ def boxplot_percentage_comparative(modality='power'):
 
     regions = ['T', 'TP', 'FT']
 
-    participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
-                               'H', 'Zo', 'B', 'S', 'A']
     for band in bands:
         percentage_change_df['% above initial'] = percentage_change_df['average']
         percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &
@@ -113,8 +112,6 @@ def boxplot_percentage(modality='power'):
             else 'control')
 
     regions = ['T', 'TP', 'FT']
-    participants_to_include = ['T', 'V', 'St', 'J', 'D', 'El', 'P',
-                               'H', 'Zo', 'B', 'S', 'A']
     for band in bands:
         percentage_change_df['% above initial'] = percentage_change_df[value_key]
         percentage_above_scoped = percentage_change_df[(percentage_change_df.band == band) &

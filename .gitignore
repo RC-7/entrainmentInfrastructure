@@ -66,3 +66,4 @@ tst/*.csv
 tst/*.pdf
 data/**/
 data/*.csv
+*/participant_info.py

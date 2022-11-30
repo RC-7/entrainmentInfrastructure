@@ -1,10 +1,11 @@
 from analysis import Analysis
 import h5py
 import time
+from participant_info import test_Q_datapoint
 
 a = Analysis()
 
-hf = h5py.File('../data/custom_suite/Full_run_S/b_pink.h5', 'r')
+hf = h5py.File(f'../data/custom_suite/{test_Q_datapoint}/b_pink.h5', 'r')
 
 samples = hf['raw_data']
 eeg_data = samples[()]

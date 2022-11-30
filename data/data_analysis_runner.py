@@ -11,6 +11,8 @@ from coherence_analysis import correl_coeff_to_ref, correl_coeff_set, phase_lock
 from constants import ch_names, power_analysis_file, percentage_coherence_analysis_file, coherence_analysis_file, \
     percentage_power_analysis_file
 
+from participant_info import participants, test, increase_max_crop, custom_min_crop, reduced_min_crop
+
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 SAMPLING_SPEED = 512
@@ -24,8 +26,6 @@ def main():
     # ds_name = 'beta_audio_retest'
     # ds_name = 'alpha_audio'
     # ds_name = 'pink_audio'
-    # participants = ['Full_run_V', 'Full_run_A', 'Full_run_B', 'Full_run_El', 'Full_run_H', 'Full_run_Jasp',
-    #                 'Full_run_D', 'Full_run_S', 'Full_run_Zo', 'Full_run_P', 'Full_run_J']
     # TODO thread this
     # text_file = open(power_analysis_file, "w")
     # power_summary_columns = "participantID, dataset_name, band, region, start, end, max, min, three_min, six_min, " \
@@ -50,11 +50,6 @@ def main():
     # text_file.write(power_summary_columns)
     # text_file.close()
 
-    # participants = ['Full_run_V', 'Full_run_St', 'Full_run_J', 'Full_run_D', 'Full_run_El', 'Full_run_P',
-    #                 'Full_run_H', 'Full_run_Zo', 'Full_run_S', 'Full_run_A', 'Full_run_Jasp', 'Full_run_B',
-    #                 'Full_run_T']
-    participants = ['Full_run_A']
-    test = ['Full_run_V', 'Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D', 'Full_run_J', 'Full_run_T']
     threshold = 90
     group = ''
     run_epoch_artifacts = True
@@ -63,11 +58,11 @@ def main():
         min_crop = 0
         max_crop = None
         # TODO Scope to datasets
-        if p == 'Full_run_St' or p == 'Full_run_D':
+        if p in increase_max_crop:
             max_crop = 60 * 14
         if p in test:
             group = 'test'
-            if p == 'Full_run_V':
+            if p == custom_min_crop:
                 ds_names = ['ml_beta_audio', 'beta_audio', 'pink_audio']
                 min_crop = 60
             else:
@@ -83,14 +78,14 @@ def main():
         for ds_name in ds_names:
             if ds_name == 'beta_audio':
                 min_crop = 40
-            if ds_name == 'beta_audio' and p == 'Full_run_V':
+            if ds_name == 'beta_audio' and p == custom_min_crop:
                 min_crop = 60
             if ds_name == 'ml_beta_audio':
                 min_crop = 15
             if ds_name == 'pink_audio' and p not in test:
                 min_crop = 40
             if ds_name == 'pink_audio' and p in test:
-                if p == 'Full_run_D':
+                if p == reduced_min_crop:
                     min_crop = 40
             else:
                 min_crop = 15
@@ -108,9 +103,7 @@ def main():
                 epochs = epoch_artifacts(cropped_data, ch_names, threshold)
 
             for band in bands:
-                if p in ['Full_run_V', 'Full_run_T', 'Full_run_St', 'Full_run_J', 'Full_run_D', 'Full_run_El',
-                         'Full_run_P', 'Full_run_H', 'Full_run_Zo', 'Full_run_S', 'Full_run_A', 'Full_run_Jasp',
-                         'Full_run_B']:
+                if p in participants:
                     save_plot = False
                 else:
                     save_plot = True
@@ -153,7 +146,7 @@ if __name__ == '__main__':
 # test_psd(data, electrodes_to_plot, index_dict)
 # # raw_data.pick([ch_names[n] for n in range(0, 3)])
 # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True,
-#           filename='J_STFT_Beta_power.png',
+#           filename='filename.png',
 #           plot_averaged=True)
 
 
@@ -164,9 +157,9 @@ if __name__ == '__main__':
 # correl_coeff_set(cropped_data, method='coeff', time_sound=60, filename='V_23-25-test', save_fig=True)
 # phase_locking_value(cropped_data, electrodes_to_plot)
 
-# degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='H_Pink_Beta_filt_degree',
+# degree(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='filename_Beta_filt_degree',
 #        inter_hemisphere=False, plv=plv)
-# small_world(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='D_small_world_all',
+# small_world(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True, filename='filename_small_world_all',
 #             plv=plv)
 
-# correl_coeff_set(cropped_data, method='coeff', save_fig=True, filename='el_Pink_beta_filt_cluster', time_sound=80)
+# correl_coeff_set(cropped_data, method='coeff', save_fig=True, filename='filename_Pink_beta_filt_cluster', time_sound=80)

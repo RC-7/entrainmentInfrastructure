@@ -4,6 +4,7 @@ import pandas as pd
 
 from data.constants import power_analysis_file, coherence_analysis_file, participants, test_participants,\
     control_participants
+from participant_info import test
 
 
 def k_means_analysis():
