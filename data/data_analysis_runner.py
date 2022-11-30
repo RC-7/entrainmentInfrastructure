@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from power_analysis import stft_test, stft_by_region, analyse_power_values, order_percentrage_power
-from mne_wrapper import generate_mne_raw_with_info
+from mne_wrapper import generate_mne_raw_with_info, plot_sensor_locations
 from generic_analysis import create_x_values
 import os
 from util import crop_data, view_data, epoch_artifacts
@@ -40,23 +40,24 @@ def main():
     # text_file.write(power_summary_columns)
     # text_file.close()
 
-    text_file = open(percentage_power_analysis_file, "w")
-    power_summary_columns = "Participant, dataset, band, group, region, 3, 6, 9, 12, 15, average\n"
-    text_file.write(power_summary_columns)
-    text_file.close()
+    # text_file = open(percentage_power_analysis_file, "w")
+    # power_summary_columns = "Participant, dataset, band, group, region, 3, 6, 9, 12, 15, average\n"
+    # text_file.write(power_summary_columns)
+    # text_file.close()
 
     # text_file = open(percentage_coherence_analysis_file, "w")
     # power_summary_columns = "Participant, dataset, band, region, %above\n"
     # text_file.write(power_summary_columns)
     # text_file.close()
 
-    participants = ['Full_run_V', 'Full_run_St', 'Full_run_J', 'Full_run_D', 'Full_run_El', 'Full_run_P',
-                    'Full_run_H', 'Full_run_Zo', 'Full_run_S', 'Full_run_A', 'Full_run_Jasp', 'Full_run_B',
-                    'Full_run_T']
+    # participants = ['Full_run_V', 'Full_run_St', 'Full_run_J', 'Full_run_D', 'Full_run_El', 'Full_run_P',
+    #                 'Full_run_H', 'Full_run_Zo', 'Full_run_S', 'Full_run_A', 'Full_run_Jasp', 'Full_run_B',
+    #                 'Full_run_T']
+    participants = ['Full_run_A']
     test = ['Full_run_V', 'Full_run_A', 'Full_run_S', 'Full_run_Jasp', 'Full_run_D', 'Full_run_J', 'Full_run_T']
     threshold = 90
     group = ''
-    run_epoch_artifacts = False
+    run_epoch_artifacts = True
     for p in participants:
         # TODO incorporate crop into 3 min buckets
         min_crop = 0
@@ -76,8 +77,8 @@ def main():
             group = 'control'
             ds_names = ['pink_audio']
         file_type = 'hdfs'
-        bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
-        # bands = ['beta_entrain', 'beta_entrain_low']
+        # bands = ['beta', 'alpha', 'beta_entrain', 'beta_entrain_low', 'theta']
+        bands = ['beta_entrain', 'beta_entrain_low']
 
         for ds_name in ds_names:
             if ds_name == 'beta_audio':
@@ -101,6 +102,8 @@ def main():
                 index_dict[i] = np.index_exp[:, i]
             if run_epoch_artifacts:
                 [raw, info] = generate_mne_raw_with_info(file_type, filename, reference=True, scope='')
+                # plot_sensor_locations(raw)
+
                 cropped_data = crop_data(raw, min_crop, max_crop)
                 epochs = epoch_artifacts(cropped_data, ch_names, threshold)
 
@@ -118,22 +121,22 @@ def main():
                 # #####################################
                 # ##########  Connectivity  ###########
                 # #####################################
-                # fn = f'{p.split("_")[-1]}_{ds_name}_{band}_Clustering'
+                fn = f'{p.split("_")[-1]}_{ds_name}_{band}_Clustering'
                 # print(fn)
                 #
-                # networkx_analysis(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True,
-                #                   filename=fn, inter_hemisphere=False, metric='clustering',
-                #                   ratio=False, entrain_time=80, region_averaged=True, artifact_epochs=epochs, band=band)
+                networkx_analysis(cropped_data, electrodes_to_plot, method='hilbert', save_fig=True,
+                                  filename=fn, inter_hemisphere=False, metric='clustering',
+                                  ratio=False, entrain_time=80, region_averaged=True, artifact_epochs=epochs, band=band)
 
                 # ####################################
                 # #############  Power  ##############
                 # ####################################
-                fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power'
+                # fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power'
                 # print(fn)
                 # TODO account for cropping time
                 # stft_by_region(cropped_data, electrodes_to_plot, index_dict, save_plot=save_plot, filename=fn,
                 #                artifact_epochs=epochs, band=band, save_values=True)
-                analyse_power_values(fn, band, group, ds_name)
+                # analyse_power_values(fn, band, group, ds_name)
                 # fn = f'{p.split("_")[-1]}_{ds_name}_{band}_filtered_Power_no_avg'
                 # stft_test(cropped_data, electrodes_to_plot, index_dict, save=True, filename=fn, plot_averaged=True,
                 #           band=band)
