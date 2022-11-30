@@ -362,6 +362,9 @@ def networkx_analysis(raw_data, electrodes_to_plot, method='hilbert', metric='cl
 
             csv_write_region = f'{filename.split("_")[0]}, {filename.split("_")[1]}, {band}'
             if key == 'T' or key == 'TP' or key == 'FT':
+                np_ds_filename_data = f'Clustering/{filename}_{key}'
+                array_to_save = [ma_time_global, ma_avg]
+                np.save(np_ds_filename_data, array_to_save)
                 csv_write_region += f', {key}'
                 csv_write_region += f', {ma_avg[0]}'
                 csv_write_region += f', {ma_avg[-1]}'
