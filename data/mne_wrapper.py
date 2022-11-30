@@ -99,6 +99,6 @@ def plot_sensor_locations(raw_data):
                            sharex=True, sharey=True)
 
     # we plot the channel positions with default sphere - the mne way
-    raw_data.plot_sensors(axes=ax, show=False)
+    raw_data.plot_sensors(axes=ax, show=True, kind='topomap', sphere='eeglab')
     ax.set_title('Channel projection', fontweight='bold')
     plt.show()
